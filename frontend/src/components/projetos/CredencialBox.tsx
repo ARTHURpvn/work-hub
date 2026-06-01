@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useDeleteCredencial, useUpsertCredencial } from "@/hooks/useCredencial"
+import { confirm } from "@/store/confirmStore"
+import { toast } from "@/store/toastStore"
 
 interface Props {
   projetoId: string
@@ -63,6 +65,7 @@ export function CredencialBox({ projetoId, temCredencial, editable }: Props) {
       setEditing(false)
       setSenha("")
       setRevealed(null)
+      toast.success("Credencial salva")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao salvar credencial")
     }
@@ -144,10 +147,17 @@ export function CredencialBox({ projetoId, temCredencial, editable }: Props) {
             size="sm"
             variant="secondary"
             disabled={del.isPending}
-            onClick={() => {
-              if (confirm("Remover a credencial salva deste projeto?")) {
-                del.mutate(projetoId)
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Remover credencial?",
+                description: "A credencial salva deste projeto será apagada.",
+                confirmLabel: "Remover",
+                destructive: true,
+              })
+              if (ok) {
+                await del.mutateAsync(projetoId)
                 setRevealed(null)
+                toast.success("Credencial removida")
               }
             }}
           >

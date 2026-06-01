@@ -2,10 +2,14 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { MembrosList } from "./MembrosList"
 import { CredencialBox } from "./CredencialBox"
 import { useCreateProjeto, useUpdateProjeto } from "@/hooks/useProjetos"
 import { useVpsList } from "@/hooks/useVps"
+import { toast } from "@/store/toastStore"
 import type { Origem, Projeto } from "@/api/projetos"
 
 interface Props {
@@ -14,13 +18,14 @@ interface Props {
   onCancel: () => void
 }
 
-const ORIGENS: Origem[] = ["Otavio", "Titan", "Freelas"]
+const ORIGENS: Origem[] = ["Otavio", "Titan", "Freelas", "Pessoal"]
 
 export function ProjetoForm({ projeto, onSaved, onCancel }: Props) {
   const isEdit = !!projeto
   const { data: vpsList } = useVpsList()
 
   const [nome, setNome] = useState(projeto?.nome ?? "")
+  const [descricao, setDescricao] = useState(projeto?.descricao ?? "")
   const [origem, setOrigem] = useState<Origem>(projeto?.origem ?? "Freelas")
   const [temAuth, setTemAuth] = useState(projeto?.tem_autenticacao ?? false)
   const [publicavel, setPublicavel] = useState(projeto?.publicavel ?? false)
@@ -40,6 +45,7 @@ export function ProjetoForm({ projeto, onSaved, onCancel }: Props) {
 
     const payload = {
       nome: nome.trim(),
+      descricao: descricao.trim() || null,
       origem,
       tem_autenticacao: temAuth,
       publicavel,
@@ -51,8 +57,10 @@ export function ProjetoForm({ projeto, onSaved, onCancel }: Props) {
     try {
       if (isEdit) {
         await update.mutateAsync({ id: projeto.id, data: { ...payload, arquivado } })
+        toast.success("Projeto atualizado")
       } else {
         await create.mutateAsync(payload)
+        toast.success("Projeto criado")
       }
       onSaved()
     } catch (err) {
@@ -66,6 +74,17 @@ export function ProjetoForm({ projeto, onSaved, onCancel }: Props) {
         <div className="space-y-2">
           <Label htmlFor="nome">Nome *</Label>
           <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} required autoFocus />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="proj-descricao">Descrição</Label>
+          <Textarea
+            id="proj-descricao"
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            rows={3}
+            placeholder="Do que se trata o projeto, contexto, objetivo..."
+          />
         </div>
 
         <div className="space-y-2">
@@ -88,19 +107,14 @@ export function ProjetoForm({ projeto, onSaved, onCancel }: Props) {
 
         <div className="space-y-2">
           <Label htmlFor="vps">VPS</Label>
-          <select
-            id="vps"
-            value={vpsId}
-            onChange={(e) => setVpsId(e.target.value)}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          >
+          <Select id="vps" value={vpsId} onChange={(e) => setVpsId(e.target.value)}>
             <option value="">Nenhuma</option>
             {vpsList?.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.nome ? `${v.nome} (${v.ip})` : v.ip}
               </option>
             ))}
-          </select>
+          </Select>
           <p className="text-xs text-muted-foreground">Cadastre VPS na aba VPS para vincular aqui.</p>
         </div>
 
@@ -122,16 +136,13 @@ export function ProjetoForm({ projeto, onSaved, onCancel }: Props) {
               { id: "publicavel", label: "Publicável no LinkedIn", checked: publicavel, onChange: setPublicavel },
               ...(isEdit ? [{ id: "arquivado", label: "Arquivado", checked: arquivado, onChange: setArquivado }] : []),
             ].map(({ id, label, checked, onChange }) => (
-              <label key={id} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  id={id}
-                  checked={checked}
-                  onChange={(e) => onChange(e.target.checked)}
-                  className="rounded"
-                />
-                {label}
-              </label>
+              <Checkbox
+                key={id}
+                id={id}
+                label={label}
+                checked={checked}
+                onChange={(e) => onChange(e.target.checked)}
+              />
             ))}
           </div>
         </div>

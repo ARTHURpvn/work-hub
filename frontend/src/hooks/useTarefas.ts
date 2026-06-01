@@ -38,6 +38,45 @@ export function useDeleteTarefa() {
   })
 }
 
+export function useSubtarefas() {
+  const qc = useQueryClient()
+  const inval = () => qc.invalidateQueries({ queryKey: KEYS.all })
+  return {
+    add: useMutation({
+      mutationFn: ({ tarefaId, titulo }: { tarefaId: string; titulo: string }) =>
+        tarefasApi.addSubtarefa(tarefaId, titulo),
+      onSuccess: inval,
+    }),
+    update: useMutation({
+      mutationFn: ({ tarefaId, subId, data }: { tarefaId: string; subId: string; data: { titulo?: string; concluida?: boolean } }) =>
+        tarefasApi.updateSubtarefa(tarefaId, subId, data),
+      onSuccess: inval,
+    }),
+    remove: useMutation({
+      mutationFn: ({ tarefaId, subId }: { tarefaId: string; subId: string }) =>
+        tarefasApi.deleteSubtarefa(tarefaId, subId),
+      onSuccess: inval,
+    }),
+  }
+}
+
+export function useLinks() {
+  const qc = useQueryClient()
+  const inval = () => qc.invalidateQueries({ queryKey: KEYS.all })
+  return {
+    add: useMutation({
+      mutationFn: ({ tarefaId, label, url }: { tarefaId: string; label: string; url: string }) =>
+        tarefasApi.addLink(tarefaId, { label, url }),
+      onSuccess: inval,
+    }),
+    remove: useMutation({
+      mutationFn: ({ tarefaId, linkId }: { tarefaId: string; linkId: string }) =>
+        tarefasApi.deleteLink(tarefaId, linkId),
+      onSuccess: inval,
+    }),
+  }
+}
+
 // Usado pelo Kanban — update otimista
 export function useUpdateStatus() {
   const qc = useQueryClient()

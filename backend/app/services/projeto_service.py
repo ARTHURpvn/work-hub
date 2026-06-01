@@ -41,6 +41,7 @@ async def create_projeto(session: AsyncSession, data: ProjetoCreate) -> Projeto:
 
     projeto = Projeto(
         nome=data.nome,
+        descricao=data.descricao,
         origem=data.origem,
         tem_autenticacao=data.tem_autenticacao,
         tem_vps=data.tem_vps,

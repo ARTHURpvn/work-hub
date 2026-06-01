@@ -9,10 +9,10 @@ const prioridadeVariant: Record<string, "blue" | "purple" | "green" | "destructi
 }
 
 const statusVariant: Record<string, string> = {
-  "A Fazer": "bg-gray-100 text-gray-700",
-  "Em Andamento": "bg-blue-100 text-blue-700",
-  "Em Revisao": "bg-yellow-100 text-yellow-700",
-  Concluido: "bg-green-100 text-green-700",
+  "A Fazer": "bg-muted text-muted-foreground",
+  "Em Andamento": "bg-sky-500/15 text-sky-300",
+  "Em Revisao": "bg-amber-500/15 text-amber-300",
+  Concluido: "bg-emerald-500/15 text-emerald-300",
 }
 
 const statusLabel: Record<string, string> = {
@@ -35,7 +35,7 @@ export function TarefaCard({ tarefa, onClick }: Props) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left flex items-center gap-3 rounded-md border bg-background px-4 py-3 hover:bg-accent/50 transition-colors"
+      className="w-full text-left flex items-center gap-3 rounded-md border bg-card px-4 py-3 hover:border-primary/40 hover:bg-accent/40 transition-colors"
     >
       {/* Indicador de revisão */}
       {tarefa.retornou_de_revisao && (

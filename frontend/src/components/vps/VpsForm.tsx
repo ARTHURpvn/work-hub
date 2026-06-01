@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useCreateVps, useDeleteVps, useUpdateVps } from "@/hooks/useVps"
+import { confirm } from "@/store/confirmStore"
+import { toast } from "@/store/toastStore"
 import type { VpsComProjetos } from "@/api/vps"
 
 interface Props {
@@ -36,8 +38,10 @@ export function VpsForm({ vps, onSaved, onCancel, onDeleted }: Props) {
     try {
       if (isEdit) {
         await update.mutateAsync({ id: vps.id, data: payload })
+        toast.success("VPS atualizada")
       } else {
         await create.mutateAsync(payload)
+        toast.success("VPS cadastrada")
       }
       onSaved()
     } catch (err) {
@@ -47,12 +51,18 @@ export function VpsForm({ vps, onSaved, onCancel, onDeleted }: Props) {
 
   async function handleDelete() {
     if (!vps) return
-    const aviso = vps.projetos.length
-      ? `Esta VPS tem ${vps.projetos.length} projeto(s) vinculado(s). Eles serão desvinculados (não excluídos). Continuar?`
-      : "Excluir esta VPS?"
-    if (!confirm(aviso)) return
+    const ok = await confirm({
+      title: "Excluir VPS?",
+      description: vps.projetos.length
+        ? `Esta VPS tem ${vps.projetos.length} projeto(s) vinculado(s). Eles serão desvinculados (não excluídos).`
+        : "Esta ação não pode ser desfeita.",
+      confirmLabel: "Excluir",
+      destructive: true,
+    })
+    if (!ok) return
     try {
       await del.mutateAsync(vps.id)
+      toast.success("VPS excluída")
       onDeleted()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao excluir")

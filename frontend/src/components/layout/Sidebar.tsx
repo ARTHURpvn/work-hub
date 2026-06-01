@@ -26,17 +26,20 @@ const navItems = [
   { to: "/skills", label: "Skills", icon: Wrench, disabled: true },
 ]
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { sidebarCollapsed } = useUiStore()
 
   return (
     <aside
       className={cn(
-        "flex h-full flex-col border-r bg-background transition-all duration-300",
-        sidebarCollapsed ? "w-16" : "w-60"
+        "flex h-full flex-col border-r bg-card transition-all duration-300",
+        sidebarCollapsed ? "w-16" : "w-64"
       )}
     >
-      <div className="flex h-14 items-center border-b px-4">
+      <div className="flex h-14 items-center gap-2 border-b px-4">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-bold">
+          w
+        </div>
         {!sidebarCollapsed && (
           <span className="text-lg font-bold tracking-tight">workhub</span>
         )}
@@ -44,7 +47,7 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-1 p-2">
         {navItems.map((item) => (
-          <NavItem key={item.to} {...item} collapsed={sidebarCollapsed} />
+          <NavItem key={item.to} {...item} collapsed={sidebarCollapsed} onNavigate={onNavigate} />
         ))}
       </nav>
 
@@ -68,9 +71,10 @@ interface NavItemProps {
   collapsed: boolean
   exact?: boolean
   disabled?: boolean
+  onNavigate?: () => void
 }
 
-function NavItem({ to, label, icon: Icon, collapsed, exact, disabled }: NavItemProps) {
+function NavItem({ to, label, icon: Icon, collapsed, exact, disabled, onNavigate }: NavItemProps) {
   if (disabled) {
     return (
       <div
@@ -90,17 +94,24 @@ function NavItem({ to, label, icon: Icon, collapsed, exact, disabled }: NavItemP
     <NavLink
       to={to}
       end={exact}
+      onClick={onNavigate}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
-          isActive && "bg-accent text-accent-foreground font-medium",
+          "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          isActive
+            ? "bg-accent font-medium text-accent-foreground"
+            : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
           collapsed && "justify-center px-2"
         )
       }
       title={collapsed ? label : undefined}
     >
-      <Icon className="h-4 w-4 shrink-0" />
-      {!collapsed && <span>{label}</span>}
+      {({ isActive }) => (
+        <>
+          <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
+          {!collapsed && <span>{label}</span>}
+        </>
+      )}
     </NavLink>
   )
 }

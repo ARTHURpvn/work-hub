@@ -2,6 +2,7 @@ import { ExternalLink, GitBranch, Globe, Lock, Server } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { DetailField } from "@/components/common/DetailSheet"
 import { CredencialBox } from "./CredencialBox"
+import { ProjetoTarefas } from "./ProjetoTarefas"
 import type { Projeto } from "@/api/projetos"
 
 interface Props {
@@ -30,6 +31,12 @@ export function ProjetoView({ projeto }: Props) {
         <Badge variant="secondary">{projeto.origem}</Badge>
         {projeto.arquivado && <Badge variant="outline" className="ml-2">arquivado</Badge>}
       </DetailField>
+
+      {projeto.descricao && (
+        <DetailField label="Descrição">
+          <p className="whitespace-pre-wrap text-sm">{projeto.descricao}</p>
+        </DetailField>
+      )}
 
       {/* Links rápidos */}
       {(projeto.site_url || projeto.github_url) && (
@@ -88,6 +95,10 @@ export function ProjetoView({ projeto }: Props) {
           </ul>
         )}
       </DetailField>
+
+      <div className="border-t pt-4">
+        <ProjetoTarefas projetoId={projeto.id} />
+      </div>
     </div>
   )
 }

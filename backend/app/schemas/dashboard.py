@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 from app.schemas.vps import VpsComProjetos
@@ -30,10 +32,30 @@ class JobsResumo(BaseModel):
     por_status: dict[str, int]
 
 
+class TarefaAtencao(BaseModel):
+    id: str
+    titulo: str
+    prazo: datetime | None
+    prioridade: str
+    status: str
+    projeto_nome: str | None
+    vencida: bool
+
+
+class ProjetoProgresso(BaseModel):
+    id: str
+    nome: str
+    origem: str
+    total: int
+    concluidas: int
+
+
 class DashboardSummary(BaseModel):
     projetos: ProjetosResumo
     tarefas: TarefasResumo
     agentes: AgentesResumo
     jobs: JobsResumo
+    tarefas_atencao: list[TarefaAtencao]
+    projetos_progresso: list[ProjetoProgresso]
     repositorios_por_vps: list[VpsComProjetos]
     projetos_sem_vps: list[dict]  # {id, nome, origem, github_url, site_url}

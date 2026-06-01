@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
@@ -31,4 +31,14 @@ class Tarefa(Base):
     )
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    subtarefas: Mapped[list["Subtarefa"]] = relationship(  # noqa: F821
+        "Subtarefa",
+        back_populates="tarefa",
+        cascade="all, delete-orphan",
+        order_by="Subtarefa.ordem",
+    )
+    links: Mapped[list["TarefaLink"]] = relationship(  # noqa: F821
+        "TarefaLink", back_populates="tarefa", cascade="all, delete-orphan"
     )

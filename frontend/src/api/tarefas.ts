@@ -1,6 +1,19 @@
 export type Status = "A Fazer" | "Em Andamento" | "Em Revisao" | "Concluido"
 export type Prioridade = "baixa" | "media" | "alta"
 
+export interface Subtarefa {
+  id: string
+  titulo: string
+  concluida: boolean
+  ordem: number
+}
+
+export interface TarefaLink {
+  id: string
+  label: string
+  url: string
+}
+
 export interface Tarefa {
   id: string
   titulo: string
@@ -14,6 +27,8 @@ export interface Tarefa {
   revisao_retornos: number
   criado_em: string
   atualizado_em: string
+  subtarefas: Subtarefa[]
+  links: TarefaLink[]
 }
 
 export interface TarefaCreate {
@@ -69,4 +84,16 @@ export const tarefasApi = {
     request<Tarefa>(`/tarefas/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   delete: (id: string) =>
     request<void>(`/tarefas/${id}`, { method: "DELETE" }),
+
+  addSubtarefa: (tarefaId: string, titulo: string) =>
+    request<Subtarefa>(`/tarefas/${tarefaId}/subtarefas`, { method: "POST", body: JSON.stringify({ titulo }) }),
+  updateSubtarefa: (tarefaId: string, subId: string, data: { titulo?: string; concluida?: boolean }) =>
+    request<Subtarefa>(`/tarefas/${tarefaId}/subtarefas/${subId}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteSubtarefa: (tarefaId: string, subId: string) =>
+    request<void>(`/tarefas/${tarefaId}/subtarefas/${subId}`, { method: "DELETE" }),
+
+  addLink: (tarefaId: string, body: { label: string; url: string }) =>
+    request<TarefaLink>(`/tarefas/${tarefaId}/links`, { method: "POST", body: JSON.stringify(body) }),
+  deleteLink: (tarefaId: string, linkId: string) =>
+    request<void>(`/tarefas/${tarefaId}/links/${linkId}`, { method: "DELETE" }),
 }

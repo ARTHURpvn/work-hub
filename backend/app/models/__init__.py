@@ -4,6 +4,7 @@ from app.models.credencial import CredencialProjeto
 from app.models.linkedin import LinkedinPost, PromptTemplate
 from app.models.projeto import Projeto, ProjetoMembro
 from app.models.skill import SkillRef
+from app.models.subtarefa import Subtarefa, TarefaLink
 from app.models.tarefa import Tarefa
 from app.models.usuario import Usuario
 from app.models.vps import Vps
@@ -15,6 +16,8 @@ __all__ = [
     "Vps",
     "CredencialProjeto",
     "Tarefa",
+    "Subtarefa",
+    "TarefaLink",
     "Agente",
     "Job",
     "JobLog",

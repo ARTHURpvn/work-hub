@@ -2,10 +2,11 @@ import { GitBranch, Globe, KeyRound, Lock, Server } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { Projeto } from "@/api/projetos"
 
-const origemVariant: Record<string, "blue" | "purple" | "green"> = {
+const origemVariant: Record<string, "blue" | "purple" | "green" | "warning"> = {
   Otavio: "blue",
   Titan: "purple",
   Freelas: "green",
+  Pessoal: "warning",
 }
 
 interface Props {
@@ -17,7 +18,7 @@ export function ProjetoCard({ projeto, onClick }: Props) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left rounded-lg border bg-background p-4 shadow-sm transition-colors hover:bg-accent/50 ${projeto.arquivado ? "opacity-50" : ""}`}
+      className={`w-full text-left rounded-lg border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/40 ${projeto.arquivado ? "opacity-50" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">

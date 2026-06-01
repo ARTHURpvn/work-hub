@@ -10,7 +10,9 @@ from app.schemas.dashboard import (
     AgentesResumo,
     DashboardSummary,
     JobsResumo,
+    ProjetoProgresso,
     ProjetosResumo,
+    TarefaAtencao,
     TarefasResumo,
 )
 from app.schemas.vps import ProjetoResumo, VpsComProjetos
@@ -80,6 +82,65 @@ async def build_summary(session: AsyncSession) -> DashboardSummary:
     por_status_job = await _count_by(session, Job.status)
     jobs = JobsResumo(total=sum(por_status_job.values()), por_status=por_status_job)
 
+    # --- Tarefas que precisam de atenção (vencidas + próximas 7 dias) ---
+    atencao_rows = (
+        await session.execute(
+            select(
+                Tarefa.id, Tarefa.titulo, Tarefa.prazo, Tarefa.prioridade, Tarefa.status, Projeto.nome
+            )
+            .outerjoin(Projeto, Tarefa.projeto_id == Projeto.id)
+            .where(
+                Tarefa.prazo.is_not(None),
+                Tarefa.prazo <= em_7_dias,
+                Tarefa.status != STATUS_CONCLUIDO,
+            )
+            .order_by(Tarefa.prazo.asc())
+            .limit(8)
+        )
+    ).all()
+    tarefas_atencao = [
+        TarefaAtencao(
+            id=str(r[0]),
+            titulo=r[1],
+            prazo=r[2],
+            prioridade=r[3],
+            status=r[4],
+            projeto_nome=r[5],
+            vencida=r[2] < agora,
+        )
+        for r in atencao_rows
+    ]
+
+    # --- Progresso por projeto (tarefas concluídas / total) ---
+    contagem_rows = (
+        await session.execute(
+            select(
+                Tarefa.projeto_id,
+                func.count(),
+                func.count().filter(Tarefa.status == STATUS_CONCLUIDO),
+            ).group_by(Tarefa.projeto_id)
+        )
+    ).all()
+    contagem = {r[0]: (int(r[1]), int(r[2])) for r in contagem_rows}
+
+    proj_rows = (
+        await session.execute(
+            select(Projeto.id, Projeto.nome, Projeto.origem)
+            .where(Projeto.arquivado.is_(False))
+            .order_by(Projeto.criado_em.desc())
+        )
+    ).all()
+    projetos_progresso = [
+        ProjetoProgresso(
+            id=str(pid),
+            nome=nome,
+            origem=origem,
+            total=contagem.get(pid, (0, 0))[0],
+            concluidas=contagem.get(pid, (0, 0))[1],
+        )
+        for pid, nome, origem in proj_rows
+    ]
+
     # --- Repositórios por VPS (apenas projetos não arquivados) ---
     vps_list = await vps_service.list_vps(session)
     repositorios_por_vps = [
@@ -116,6 +177,8 @@ async def build_summary(session: AsyncSession) -> DashboardSummary:
         tarefas=tarefas,
         agentes=agentes,
         jobs=jobs,
+        tarefas_atencao=tarefas_atencao,
+        projetos_progresso=projetos_progresso,
         repositorios_por_vps=repositorios_por_vps,
         projetos_sem_vps=projetos_sem_vps,
     )

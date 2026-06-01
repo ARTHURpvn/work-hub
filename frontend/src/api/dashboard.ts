@@ -30,11 +30,31 @@ export interface ProjetoSemVps {
   site_url: string | null
 }
 
+export interface TarefaAtencao {
+  id: string
+  titulo: string
+  prazo: string | null
+  prioridade: string
+  status: string
+  projeto_nome: string | null
+  vencida: boolean
+}
+
+export interface ProjetoProgresso {
+  id: string
+  nome: string
+  origem: string
+  total: number
+  concluidas: number
+}
+
 export interface DashboardSummary {
   projetos: ProjetosResumo
   tarefas: TarefasResumo
   agentes: ContagemResumo
   jobs: ContagemResumo
+  tarefas_atencao: TarefaAtencao[]
+  projetos_progresso: ProjetoProgresso[]
   repositorios_por_vps: VpsComProjetos[]
   projetos_sem_vps: ProjetoSemVps[]
 }

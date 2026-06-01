@@ -1,13 +1,17 @@
-import { Plus } from "lucide-react"
+import { FolderOpen, Plus } from "lucide-react"
 import { useState } from "react"
+import { PageHeader } from "@/components/common/PageHeader"
+import { FilterBar, FilterChip } from "@/components/common/FilterBar"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProjetoCard } from "@/components/projetos/ProjetoCard"
 import { ProjetoSheet } from "@/components/projetos/ProjetoSheet"
 import { useProjetos } from "@/hooks/useProjetos"
 import type { Origem, Projeto } from "@/api/projetos"
 
-const ORIGENS: Origem[] = ["Otavio", "Titan", "Freelas"]
+const ORIGENS: Origem[] = ["Otavio", "Titan", "Freelas", "Pessoal"]
 
 export function Projetos() {
   const [origemFiltro, setOrigemFiltro] = useState<Origem | undefined>()
@@ -36,41 +40,38 @@ export function Projetos() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl font-bold">Projetos</h1>
-        <Button onClick={handleNew} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Novo projeto
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Projetos"
+        action={
+          <Button onClick={handleNew} size="sm">
+            <Plus className="mr-1 h-4 w-4" />
+            Novo projeto
+          </Button>
+        }
+      />
 
-      {/* Filtros */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={() => setOrigemFiltro(undefined)}
-          className={`text-sm px-3 py-1 rounded-full border transition-colors ${!origemFiltro ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
-        >
+      <FilterBar>
+        <FilterChip active={!origemFiltro} onClick={() => setOrigemFiltro(undefined)}>
           Todos
-        </button>
+        </FilterChip>
         {ORIGENS.map((o) => (
-          <button
+          <FilterChip
             key={o}
+            active={origemFiltro === o}
             onClick={() => setOrigemFiltro(origemFiltro === o ? undefined : o)}
-            className={`text-sm px-3 py-1 rounded-full border transition-colors ${origemFiltro === o ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
           >
             {o}
-          </button>
+          </FilterChip>
         ))}
-        <label className="flex items-center gap-1.5 text-sm cursor-pointer ml-2">
-          <input
-            type="checkbox"
-            checked={mostrarArquivados}
-            onChange={(e) => setMostrarArquivados(e.target.checked)}
-          />
-          Mostrar arquivados
-        </label>
-      </div>
+        <Checkbox
+          id="arquivados"
+          label="Mostrar arquivados"
+          className="ml-2"
+          checked={mostrarArquivados}
+          onChange={(e) => setMostrarArquivados(e.target.checked)}
+        />
+      </FilterBar>
 
       {/* Estados */}
       {isError && (
@@ -88,13 +89,17 @@ export function Projetos() {
       )}
 
       {!isLoading && !isError && projetos?.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-muted-foreground">Nenhum projeto encontrado.</p>
-          <Button onClick={handleNew} variant="outline" size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            Criar primeiro projeto
-          </Button>
-        </div>
+        <EmptyState
+          icon={<FolderOpen className="h-6 w-6" />}
+          title="Nenhum projeto encontrado"
+          description="Crie seu primeiro projeto para começar a organizar o trabalho."
+          action={
+            <Button onClick={handleNew} variant="outline" size="sm">
+              <Plus className="mr-1 h-4 w-4" />
+              Criar primeiro projeto
+            </Button>
+          }
+        />
       )}
 
       {!isLoading && !isError && projetos && projetos.length > 0 && (

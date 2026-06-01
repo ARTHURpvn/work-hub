@@ -8,7 +8,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from app.schemas.vps import VpsResponse
 
 
-Origem = Literal["Otavio", "Titan", "Freelas"]
+Origem = Literal["Otavio", "Titan", "Freelas", "Pessoal"]
 
 
 def _validate_url(v: str | None) -> str | None:
@@ -38,6 +38,7 @@ class MembroResponse(BaseModel):
 
 class ProjetoCreate(BaseModel):
     nome: str
+    descricao: str | None = None
     origem: Origem
     tem_autenticacao: bool = False
     tem_vps: bool = False
@@ -70,6 +71,7 @@ class ProjetoCreate(BaseModel):
 
 class ProjetoUpdate(BaseModel):
     nome: str | None = None
+    descricao: str | None = None
     origem: Origem | None = None
     tem_autenticacao: bool | None = None
     tem_vps: bool | None = None
@@ -104,6 +106,7 @@ class ProjetoUpdate(BaseModel):
 class ProjetoResponse(BaseModel):
     id: uuid.UUID
     nome: str
+    descricao: str | None
     origem: str
     tem_autenticacao: bool
     tem_vps: bool

@@ -2,8 +2,13 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useCreateTarefa, useDeleteTarefa, useUpdateTarefa } from "@/hooks/useTarefas"
 import { useProjetos } from "@/hooks/useProjetos"
+import { confirm } from "@/store/confirmStore"
+import { toast } from "@/store/toastStore"
 import type { Prioridade, Status, Tarefa } from "@/api/tarefas"
 
 const PRIORIDADES: Prioridade[] = ["baixa", "media", "alta"]
@@ -17,11 +22,13 @@ const STATUS_LABEL: Record<Status, string> = {
 
 interface Props {
   tarefa?: Tarefa
+  /** Pré-seleciona o projeto ao criar uma tarefa nova. */
+  projetoIdInicial?: string
   onSaved: () => void
   onCancel: () => void
 }
 
-export function TarefaForm({ tarefa, onSaved, onCancel }: Props) {
+export function TarefaForm({ tarefa, projetoIdInicial, onSaved, onCancel }: Props) {
   const isEdit = !!tarefa
 
   const [titulo, setTitulo] = useState(tarefa?.titulo ?? "")
@@ -29,10 +36,9 @@ export function TarefaForm({ tarefa, onSaved, onCancel }: Props) {
   const [prazo, setPrazo] = useState(tarefa?.prazo ? tarefa.prazo.slice(0, 16) : "")
   const [prioridade, setPrioridade] = useState<Prioridade>(tarefa?.prioridade ?? "media")
   const [statusVal, setStatusVal] = useState<Status>(tarefa?.status ?? "A Fazer")
-  const [projetoId, setProjetoId] = useState(tarefa?.projeto_id ?? "")
+  const [projetoId, setProjetoId] = useState(tarefa?.projeto_id ?? projetoIdInicial ?? "")
   const [publicavel, setPublicavel] = useState(tarefa?.publicavel ?? false)
   const [error, setError] = useState("")
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const create = useCreateTarefa()
   const update = useUpdateTarefa()
@@ -54,8 +60,10 @@ export function TarefaForm({ tarefa, onSaved, onCancel }: Props) {
     try {
       if (isEdit) {
         await update.mutateAsync({ id: tarefa.id, data: payload })
+        toast.success("Tarefa atualizada")
       } else {
         await create.mutateAsync(payload)
+        toast.success("Tarefa criada")
       }
       onSaved()
     } catch (err) {
@@ -65,12 +73,16 @@ export function TarefaForm({ tarefa, onSaved, onCancel }: Props) {
 
   async function handleDelete() {
     if (!tarefa) return
-    if (!confirmDelete) {
-      setConfirmDelete(true)
-      return
-    }
+    const ok = await confirm({
+      title: "Excluir tarefa?",
+      description: "Esta ação não pode ser desfeita.",
+      confirmLabel: "Excluir",
+      destructive: true,
+    })
+    if (!ok) return
     try {
       await del.mutateAsync(tarefa.id)
+      toast.success("Tarefa excluída")
       onSaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao excluir")
@@ -88,12 +100,11 @@ export function TarefaForm({ tarefa, onSaved, onCancel }: Props) {
 
       <div className="space-y-2">
         <Label htmlFor="descricao">Descrição</Label>
-        <textarea
+        <Textarea
           id="descricao"
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
           rows={3}
-          className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
         />
       </div>
 
@@ -142,23 +153,20 @@ export function TarefaForm({ tarefa, onSaved, onCancel }: Props) {
 
       <div className="space-y-2">
         <Label htmlFor="projeto">Projeto</Label>
-        <select
-          id="projeto"
-          value={projetoId}
-          onChange={(e) => setProjetoId(e.target.value)}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
+        <Select id="projeto" value={projetoId} onChange={(e) => setProjetoId(e.target.value)}>
           <option value="">Sem projeto</option>
           {projetos?.map((p) => (
             <option key={p.id} value={p.id}>{p.nome}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" checked={publicavel} onChange={(e) => setPublicavel(e.target.checked)} />
-        Publicável no LinkedIn
-      </label>
+      <Checkbox
+        id="tarefa-publicavel"
+        label="Publicável no LinkedIn"
+        checked={publicavel}
+        onChange={(e) => setPublicavel(e.target.checked)}
+      />
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -173,7 +181,7 @@ export function TarefaForm({ tarefa, onSaved, onCancel }: Props) {
 
       {isEdit && (
         <Button type="button" variant="destructive" className="w-full" onClick={handleDelete} disabled={pending}>
-          {confirmDelete ? "Confirmar exclusão?" : "Excluir tarefa"}
+          Excluir tarefa
         </Button>
       )}
     </form>

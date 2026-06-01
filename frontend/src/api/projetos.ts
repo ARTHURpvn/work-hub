@@ -1,4 +1,4 @@
-export type Origem = "Otavio" | "Titan" | "Freelas"
+export type Origem = "Otavio" | "Titan" | "Freelas" | "Pessoal"
 
 export interface Membro {
   id: string
@@ -16,6 +16,7 @@ export interface VpsResumo {
 export interface Projeto {
   id: string
   nome: string
+  descricao: string | null
   origem: Origem
   tem_autenticacao: boolean
   tem_vps: boolean
@@ -33,6 +34,7 @@ export interface Projeto {
 
 export interface ProjetoCreate {
   nome: string
+  descricao?: string | null
   origem: Origem
   tem_autenticacao?: boolean
   tem_vps?: boolean

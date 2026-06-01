@@ -1,13 +1,13 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
-OrigemEnum = Enum("Otavio", "Titan", "Freelas", name="origem_enum")
+OrigemEnum = Enum("Otavio", "Titan", "Freelas", "Pessoal", name="origem_enum")
 
 
 class Projeto(Base):
@@ -15,6 +15,7 @@ class Projeto(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
+    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
     origem: Mapped[str] = mapped_column(OrigemEnum, nullable=False)
     tem_autenticacao: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     tem_vps: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

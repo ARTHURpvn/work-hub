@@ -1,9 +1,14 @@
-import { Plus } from "lucide-react"
+import { ListTodo, Plus } from "lucide-react"
 import { useState } from "react"
+import { PageHeader } from "@/components/common/PageHeader"
+import { FilterBar, FilterChip } from "@/components/common/FilterBar"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { EmptyState } from "@/components/ui/empty-state"
+import { Select } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TarefaCard } from "@/components/tarefas/TarefaCard"
-import { TarefaSheet } from "@/components/tarefas/TarefaSheet"
+import { TarefaModal } from "@/components/tarefas/TarefaModal"
 import { useTarefas } from "@/hooks/useTarefas"
 import { useProjetos } from "@/hooks/useProjetos"
 import { useTarefaStore } from "@/store/tarefaStore"
@@ -46,68 +51,61 @@ export function Tarefas() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl font-bold">Tarefas</h1>
-        <Button onClick={handleNew} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Nova tarefa
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Tarefas"
+        action={
+          <Button onClick={handleNew} size="sm">
+            <Plus className="mr-1 h-4 w-4" />
+            Nova tarefa
+          </Button>
+        }
+      />
 
-      {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Status */}
+      <FilterBar>
         {STATUS_OPTS.map((opt) => (
-          <button
+          <FilterChip
             key={String(opt.value)}
+            active={filters.status === opt.value}
             onClick={() => setFilter("status", opt.value)}
-            className={`text-sm px-3 py-1 rounded-full border transition-colors ${
-              filters.status === opt.value ? "bg-primary text-primary-foreground" : "hover:bg-accent"
-            }`}
           >
             {opt.label}
-          </button>
+          </FilterChip>
         ))}
 
-        {/* Projeto */}
-        <select
+        <Select
           value={filters.projeto_id ?? ""}
           onChange={(e) => setFilter("projeto_id", e.target.value || undefined)}
-          className="text-sm h-8 rounded-full border px-3 bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-9 w-auto"
         >
           <option value="">Todos os projetos</option>
           {projetos?.map((p) => (
             <option key={p.id} value={p.id}>{p.nome}</option>
           ))}
-        </select>
+        </Select>
 
-        {/* Com prazo */}
-        <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-          <input
-            type="checkbox"
-            checked={filters.com_prazo}
-            onChange={(e) => setFilter("com_prazo", e.target.checked)}
-          />
-          Com prazo
-        </label>
+        <Checkbox
+          id="com-prazo"
+          label="Com prazo"
+          checked={filters.com_prazo}
+          onChange={(e) => setFilter("com_prazo", e.target.checked)}
+        />
 
-        {/* Ordenação */}
-        <select
+        <Select
           value={`${filters.order_by}:${filters.order_dir}`}
           onChange={(e) => {
             const [ob, od] = e.target.value.split(":") as ["criado_em" | "prazo" | "prioridade", "asc" | "desc"]
             setFilter("order_by", ob)
             setFilter("order_dir", od)
           }}
-          className="text-sm h-8 rounded-full border px-3 bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-9 w-auto"
         >
           <option value="criado_em:desc">Mais recentes</option>
           <option value="criado_em:asc">Mais antigas</option>
           <option value="prazo:asc">Prazo (mais próximo)</option>
           <option value="prazo:desc">Prazo (mais distante)</option>
-        </select>
-      </div>
+        </Select>
+      </FilterBar>
 
       {/* Estados */}
       {isError && (
@@ -125,13 +123,17 @@ export function Tarefas() {
       )}
 
       {!isLoading && !isError && tarefas?.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-muted-foreground">Nenhuma tarefa encontrada.</p>
-          <Button onClick={handleNew} variant="outline" size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            Criar primeira tarefa
-          </Button>
-        </div>
+        <EmptyState
+          icon={<ListTodo className="h-6 w-6" />}
+          title="Nenhuma tarefa encontrada"
+          description="Crie uma tarefa ou ajuste os filtros."
+          action={
+            <Button onClick={handleNew} variant="outline" size="sm">
+              <Plus className="mr-1 h-4 w-4" />
+              Criar primeira tarefa
+            </Button>
+          }
+        />
       )}
 
       {!isLoading && !isError && tarefas && tarefas.length > 0 && (
@@ -142,7 +144,7 @@ export function Tarefas() {
         </div>
       )}
 
-      <TarefaSheet
+      <TarefaModal
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         tarefa={tarefaSelecionada}

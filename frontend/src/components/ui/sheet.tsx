@@ -29,7 +29,7 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
       />
       <div
         className={cn(
-          "fixed right-0 top-0 z-50 h-full w-full max-w-md bg-background shadow-xl",
+          "fixed right-0 top-0 z-50 h-full w-full max-w-md bg-card shadow-xl",
           "flex flex-col transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full"
         )}

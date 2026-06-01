@@ -1,6 +1,8 @@
 import { Plus, Server } from "lucide-react"
 import { useState } from "react"
+import { PageHeader } from "@/components/common/PageHeader"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { VpsSheet } from "@/components/vps/VpsSheet"
 import { useVpsList } from "@/hooks/useVps"
@@ -26,14 +28,17 @@ export function Vps() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl font-bold">VPS</h1>
-        <Button onClick={handleNew} size="sm">
-          <Plus className="mr-1 h-4 w-4" />
-          Nova VPS
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="VPS"
+        description="Servidores e os projetos hospedados em cada um."
+        action={
+          <Button onClick={handleNew} size="sm">
+            <Plus className="mr-1 h-4 w-4" />
+            Nova VPS
+          </Button>
+        }
+      />
 
       {isError && (
         <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -50,13 +55,17 @@ export function Vps() {
       )}
 
       {!isLoading && !isError && vpsList?.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-muted-foreground">Nenhuma VPS cadastrada.</p>
-          <Button onClick={handleNew} variant="outline" size="sm">
-            <Plus className="mr-1 h-4 w-4" />
-            Cadastrar primeira VPS
-          </Button>
-        </div>
+        <EmptyState
+          icon={<Server className="h-6 w-6" />}
+          title="Nenhuma VPS cadastrada"
+          description="Cadastre uma VPS para depois vincular projetos a ela."
+          action={
+            <Button onClick={handleNew} variant="outline" size="sm">
+              <Plus className="mr-1 h-4 w-4" />
+              Cadastrar primeira VPS
+            </Button>
+          }
+        />
       )}
 
       {!isLoading && !isError && vpsList && vpsList.length > 0 && (
@@ -65,7 +74,7 @@ export function Vps() {
             <button
               key={v.id}
               onClick={() => handleOpen(v)}
-              className="w-full rounded-lg border bg-background p-4 text-left shadow-sm transition-colors hover:bg-accent/50"
+              className="w-full rounded-lg border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/40"
             >
               <div className="flex items-center gap-2">
                 <Server className="h-4 w-4 text-muted-foreground" />
