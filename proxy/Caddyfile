@@ -1,0 +1,28 @@
+{
+    admin off
+}
+
+(allowlist) {
+    @blocked {
+        not remote_ip {$IP_ALLOWLIST:0.0.0.0/0}
+    }
+    respond @blocked 403
+}
+
+:80 {
+    import allowlist
+
+    # Rotas da API
+    handle /api/* {
+        reverse_proxy backend:8000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Frontend SPA
+    handle {
+        reverse_proxy frontend:80
+    }
+}

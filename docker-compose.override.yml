@@ -1,0 +1,19 @@
+# Overrides para desenvolvimento local — não commitar segredos
+services:
+  proxy:
+    environment:
+      - DOMAIN=localhost
+      - IP_ALLOWLIST=0.0.0.0/0
+
+  backend:
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+
+  worker:
+    environment:
+      - APP_ENV=development
+
+  # Em dev, o npm run dev (porta 5173) é mais rápido para iterar.
+  # O serviço frontend no Docker serve o build de produção em http://localhost
