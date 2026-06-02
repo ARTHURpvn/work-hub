@@ -1,117 +1,97 @@
-import {
-  BarChart2,
-  Bot,
-  CalendarDays,
-  FolderOpen,
-  Kanban,
-  ListTodo,
-  Server,
-  Settings,
-  Wrench,
-  Zap,
-} from "lucide-react"
-import { NavLink } from "react-router-dom"
-import { cn } from "@/lib/utils"
-import { useUiStore } from "@/store/uiStore"
+import { NavLink, useNavigate } from "react-router-dom"
+import { apiLogout } from "@/api/auth"
+import { Icon, type IconName } from "@/components/ui/Icon"
+import { useProjetos } from "@/hooks/useProjetos"
+import { useSkills } from "@/hooks/useSkills"
+import { useTarefas } from "@/hooks/useTarefas"
+import { useVpsList } from "@/hooks/useVps"
+import { useAuthStore } from "@/store/authStore"
 
-const navItems = [
-  { to: "/", label: "Dashboard", icon: BarChart2, exact: true },
-  { to: "/projetos", label: "Projetos", icon: FolderOpen },
-  { to: "/tarefas", label: "Tarefas", icon: ListTodo },
-  { to: "/kanban", label: "Kanban", icon: Kanban },
-  { to: "/vps", label: "VPS", icon: Server },
-  { to: "/calendario", label: "Calendário", icon: CalendarDays, disabled: true },
-  { to: "/agentes", label: "Agentes", icon: Bot, disabled: true },
-  { to: "/jobs", label: "Jobs", icon: Zap, disabled: true },
-  { to: "/skills", label: "Skills", icon: Wrench, disabled: true },
+interface NavEntry {
+  to: string
+  label: string
+  icon: IconName
+  key: "projetos" | "tarefas" | "vps" | "skills" | null
+  end?: boolean
+}
+
+const NAV: NavEntry[] = [
+  { to: "/", label: "Dashboard", icon: "dashboard", key: null, end: true },
+  { to: "/projetos", label: "Projetos", icon: "folder", key: "projetos" },
+  { to: "/tarefas", label: "Tarefas", icon: "check_list", key: "tarefas" },
+  { to: "/kanban", label: "Kanban", icon: "board", key: null },
+  { to: "/vps", label: "VPS", icon: "server", key: "vps" },
+  { to: "/calendario", label: "Calendário", icon: "calendar", key: null },
+  { to: "/skills", label: "Skills", icon: "sparkle", key: "skills" },
 ]
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { sidebarCollapsed } = useUiStore()
+  const navigate = useNavigate()
+  const clearAuth = useAuthStore((s) => s.clearAuth)
 
-  return (
-    <aside
-      className={cn(
-        "flex h-full flex-col border-r bg-card transition-all duration-300",
-        sidebarCollapsed ? "w-16" : "w-64"
-      )}
-    >
-      <div className="flex h-14 items-center gap-2 border-b px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-bold">
-          w
-        </div>
-        {!sidebarCollapsed && (
-          <span className="text-lg font-bold tracking-tight">workhub</span>
-        )}
-      </div>
+  const { data: projetos } = useProjetos()
+  const { data: tarefas } = useTarefas()
+  const { data: vps } = useVpsList()
+  const { data: skills } = useSkills()
 
-      <nav className="flex-1 space-y-1 p-2">
-        {navItems.map((item) => (
-          <NavItem key={item.to} {...item} collapsed={sidebarCollapsed} onNavigate={onNavigate} />
-        ))}
-      </nav>
+  const counts: Record<string, number> = {
+    projetos: (projetos ?? []).filter((p) => !p.arquivado).length,
+    tarefas: (tarefas ?? []).filter((t) => t.status !== "Concluido").length,
+    vps: (vps ?? []).length,
+    skills: (skills ?? []).length,
+  }
 
-      <div className="border-t p-2">
-        <NavItem
-          to="/configuracoes"
-          label="Configurações"
-          icon={Settings}
-          collapsed={sidebarCollapsed}
-          disabled
-        />
-      </div>
-    </aside>
-  )
-}
-
-interface NavItemProps {
-  to: string
-  label: string
-  icon: React.ElementType
-  collapsed: boolean
-  exact?: boolean
-  disabled?: boolean
-  onNavigate?: () => void
-}
-
-function NavItem({ to, label, icon: Icon, collapsed, exact, disabled, onNavigate }: NavItemProps) {
-  if (disabled) {
-    return (
-      <div
-        className={cn(
-          "flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground opacity-50",
-          collapsed && "justify-center px-2"
-        )}
-        title={collapsed ? label : undefined}
-      >
-        <Icon className="h-4 w-4 shrink-0" />
-        {!collapsed && <span>{label}</span>}
-      </div>
-    )
+  async function logout() {
+    await apiLogout().catch(() => {})
+    clearAuth()
+    navigate("/login", { replace: true })
   }
 
   return (
-    <NavLink
-      to={to}
-      end={exact}
-      onClick={onNavigate}
-      className={({ isActive }) =>
-        cn(
-          "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          isActive
-            ? "bg-accent font-medium text-accent-foreground"
-            : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-          collapsed && "justify-center px-2"
-        )
-      }
-      title={collapsed ? label : undefined}
-    >
-      {({ isActive }) => (
-        <>
-          <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
-          {!collapsed && <span>{label}</span>}
-        </>
-      )}
-    </NavLink>
+    <aside className="sidebar">
+      <div className="brand-row">
+        <div className="brand-mark">w</div>
+        <div className="brand-name">
+          <b>w</b>orkhub
+        </div>
+      </div>
+
+      <nav className="nav">
+        {NAV.map((n) => {
+          const c = n.key ? counts[n.key] : 0
+          return (
+            <NavLink
+              key={n.to}
+              to={n.to}
+              end={n.end}
+              onClick={onNavigate}
+              className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
+            >
+              <Icon name={n.icon} />
+              <span>{n.label}</span>
+              {c ? <span className="badge">{c}</span> : null}
+            </NavLink>
+          )
+        })}
+
+        <div className="nav-sep" />
+        <div className="nav-item disabled">
+          <Icon name="bot" />
+          <span>Agentes</span>
+        </div>
+        <div className="nav-item disabled">
+          <Icon name="clock" />
+          <span>Jobs</span>
+        </div>
+      </nav>
+
+      <div className="nav-foot">
+        <div className="nav-sep" />
+        <button className="nav-item" onClick={logout}>
+          <Icon name="logout" />
+          <span>Sair</span>
+        </button>
+      </div>
+    </aside>
   )
 }

@@ -1,120 +1,445 @@
-import { FolderOpen, Plus } from "lucide-react"
 import { useState } from "react"
-import { PageHeader } from "@/components/common/PageHeader"
-import { FilterBar, FilterChip } from "@/components/common/FilterBar"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Skeleton } from "@/components/ui/skeleton"
-import { ProjetoCard } from "@/components/projetos/ProjetoCard"
-import { ProjetoSheet } from "@/components/projetos/ProjetoSheet"
-import { useProjetos } from "@/hooks/useProjetos"
-import type { Origem, Projeto } from "@/api/projetos"
-
-const ORIGENS: Origem[] = ["Otavio", "Titan", "Freelas", "Pessoal"]
+import { projetosApi, type Origem, type Projeto } from "@/api/projetos"
+import { Icon } from "@/components/ui/Icon"
+import { Drawer } from "@/components/ui/Drawer"
+import {
+  Button,
+  Empty,
+  Field,
+  IconButton,
+  OriginTag,
+  Progress,
+  Select,
+  StatusPill,
+  TextArea,
+  TextInput,
+} from "@/components/ui/kit"
+import { isLate, ORIGENS } from "@/lib/domain"
+import { useCreateProjeto, useProjetos, useUpdateProjeto } from "@/hooks/useProjetos"
+import { useDeleteCredencial, useUpsertCredencial } from "@/hooks/useCredencial"
+import { useCreateTarefa, useTarefas } from "@/hooks/useTarefas"
+import { useVpsList } from "@/hooks/useVps"
+import { toast } from "@/store/toastStore"
 
 export function Projetos() {
-  const [origemFiltro, setOrigemFiltro] = useState<Origem | undefined>()
-  const [mostrarArquivados, setMostrarArquivados] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [selecionadoId, setSelecionadoId] = useState<string | undefined>()
+  const { data: projetos } = useProjetos()
+  const createProjeto = useCreateProjeto()
 
-  const { data: projetos, isLoading, isError } = useProjetos({
-    origem: origemFiltro,
-    arquivado: mostrarArquivados ? undefined : false,
-  })
+  const [filter, setFilter] = useState<"all" | Origem>("all")
+  const [showArch, setShowArch] = useState(false)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [editNew, setEditNew] = useState(false)
 
-  // Deriva da lista (por ID) para refletir atualizações após salvar.
-  const projetoSelecionado: Projeto | undefined = selecionadoId
-    ? projetos?.find((p) => p.id === selecionadoId)
-    : undefined
+  const all = projetos ?? []
+  let list = all.filter((p) => (showArch ? true : !p.arquivado))
+  if (filter !== "all") list = list.filter((p) => p.origem === filter)
+  const open = all.find((p) => p.id === openId) ?? null
 
-  function handleEdit(p: Projeto) {
-    setSelecionadoId(p.id)
-    setSheetOpen(true)
+  function create() {
+    createProjeto.mutate(
+      { nome: "Novo projeto", origem: "Pessoal" },
+      {
+        onSuccess: (p) => {
+          setOpenId(p.id)
+          setEditNew(true)
+        },
+        onError: (e) => toast.error("Erro ao criar", e instanceof Error ? e.message : undefined),
+      }
+    )
   }
 
-  function handleNew() {
-    setSelecionadoId(undefined)
-    setSheetOpen(true)
-  }
+  const ativos = all.filter((p) => !p.arquivado).length
+  const arquivados = all.filter((p) => p.arquivado).length
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="Projetos"
-        action={
-          <Button onClick={handleNew} size="sm">
-            <Plus className="mr-1 h-4 w-4" />
-            Novo projeto
-          </Button>
-        }
-      />
+    <div className="page">
+      <div className="page-head">
+        <div>
+          <h1 className="t-display">Projetos</h1>
+          <div className="sub">
+            {ativos} ativos · {arquivados} arquivados
+          </div>
+        </div>
+        <Button variant="primary" icon="plus" onClick={create}>
+          Novo projeto
+        </Button>
+      </div>
 
-      <FilterBar>
-        <FilterChip active={!origemFiltro} onClick={() => setOrigemFiltro(undefined)}>
-          Todos
-        </FilterChip>
-        {ORIGENS.map((o) => (
-          <FilterChip
-            key={o}
-            active={origemFiltro === o}
-            onClick={() => setOrigemFiltro(origemFiltro === o ? undefined : o)}
+      {all.length ? (
+        <>
+          <div className="row wrap" style={{ gap: 8, marginBottom: 20 }}>
+            <span className={"chip" + (filter === "all" ? " on" : "")} onClick={() => setFilter("all")}>
+              Todos
+            </span>
+            {ORIGENS.map((o) => (
+              <span key={o.id} className={"chip" + (filter === o.id ? " on" : "")} onClick={() => setFilter(o.id)}>
+                {o.label}
+              </span>
+            ))}
+            <span
+              className={"chip" + (showArch ? " on" : "")}
+              style={{ marginLeft: "auto" }}
+              onClick={() => setShowArch((s) => !s)}
+            >
+              <Icon name="archive" size={13} /> Arquivados
+            </span>
+          </div>
+
+          {list.length ? (
+            <div className="grid g-3">
+              {list.map((p) => (
+                <ProjectCard
+                  key={p.id}
+                  p={p}
+                  onOpen={() => {
+                    setOpenId(p.id)
+                    setEditNew(false)
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="card card-pad">
+              <Empty icon="folder" title="Nenhum projeto neste filtro" />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="card card-pad">
+          <Empty
+            icon="folder"
+            title="Nenhum projeto ainda"
+            action={
+              <Button variant="primary" icon="plus" onClick={create}>
+                Criar primeiro projeto
+              </Button>
+            }
           >
-            {o}
-          </FilterChip>
-        ))}
-        <Checkbox
-          id="arquivados"
-          label="Mostrar arquivados"
-          className="ml-2"
-          checked={mostrarArquivados}
-          onChange={(e) => setMostrarArquivados(e.target.checked)}
-        />
-      </FilterBar>
-
-      {/* Estados */}
-      {isError && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar projetos. Tente novamente.
+            Projetos agrupam tarefas, credenciais e o servidor onde rodam.
+          </Empty>
         </div>
       )}
 
-      {isLoading && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-lg" />
-          ))}
-        </div>
-      )}
-
-      {!isLoading && !isError && projetos?.length === 0 && (
-        <EmptyState
-          icon={<FolderOpen className="h-6 w-6" />}
-          title="Nenhum projeto encontrado"
-          description="Crie seu primeiro projeto para começar a organizar o trabalho."
-          action={
-            <Button onClick={handleNew} variant="outline" size="sm">
-              <Plus className="mr-1 h-4 w-4" />
-              Criar primeiro projeto
-            </Button>
-          }
+      {open && (
+        <ProjetoDrawer
+          projeto={open}
+          startEdit={editNew}
+          onClose={() => {
+            setOpenId(null)
+            setEditNew(false)
+          }}
         />
       )}
-
-      {!isLoading && !isError && projetos && projetos.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {projetos.map((p) => (
-            <ProjetoCard key={p.id} projeto={p} onClick={() => handleEdit(p)} />
-          ))}
-        </div>
-      )}
-
-      <ProjetoSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        projeto={projetoSelecionado}
-      />
     </div>
+  )
+}
+
+function ProjectCard({ p, onOpen }: { p: Projeto; onOpen: () => void }) {
+  const { data: tarefas } = useTarefas()
+  const pt = (tarefas ?? []).filter((t) => t.projeto_id === p.id)
+  const done = pt.filter((t) => t.status === "Concluido").length
+  const pct = pt.length ? Math.round((done / pt.length) * 100) : 0
+
+  return (
+    <div className="card card-pad card-hover" onClick={onOpen}>
+      <div className="spread" style={{ marginBottom: 12 }}>
+        <OriginTag origin={p.origem} />
+        {p.arquivado ? (
+          <span className="chip static">
+            <Icon name="archive" size={13} /> Arquivado
+          </span>
+        ) : null}
+      </div>
+      <h3 className="t-h2" style={{ marginBottom: 6 }}>
+        {p.nome || "(sem nome)"}
+      </h3>
+      <p
+        className="muted"
+        style={{
+          fontSize: 13.5,
+          margin: "0 0 14px",
+          minHeight: 38,
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}
+      >
+        {p.descricao || "Sem descrição."}
+      </p>
+      <div style={{ marginBottom: 12 }}>
+        <div className="spread" style={{ marginBottom: 6 }}>
+          <span className="t-meta">
+            {done}/{pt.length} tarefas
+          </span>
+          <span className="t-meta mono">{pct}%</span>
+        </div>
+        <Progress pct={pct} />
+      </div>
+      <div className="row wrap" style={{ gap: 7 }}>
+        {p.site_url && (
+          <span className="chip static">
+            <Icon name="external" size={13} /> site
+          </span>
+        )}
+        {p.github_url && (
+          <span className="chip static">
+            <Icon name="external" size={13} /> GitHub
+          </span>
+        )}
+        {p.tem_credencial && (
+          <span className="chip static">
+            <Icon name="lock" size={13} /> cred
+          </span>
+        )}
+        {p.vps && (
+          <span className="chip static" style={{ marginLeft: "auto" }}>
+            <Icon name="server" size={13} /> {p.vps.nome || p.vps.ip}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; startEdit: boolean; onClose: () => void }) {
+  const { data: tarefas } = useTarefas()
+  const { data: vpsList } = useVpsList()
+  const update = useUpdateProjeto()
+  const upsertCred = useUpsertCredencial()
+  const delCred = useDeleteCredencial()
+  const createTarefa = useCreateTarefa()
+
+  const [edit, setEdit] = useState(startEdit)
+  const [reveal, setReveal] = useState<{ usuario: string; senha: string } | null>(null)
+  const [form, setForm] = useState({
+    nome: projeto.nome,
+    origem: projeto.origem,
+    descricao: projeto.descricao ?? "",
+    site_url: projeto.site_url ?? "",
+    github_url: projeto.github_url ?? "",
+    vps_id: projeto.vps_id ?? "",
+    credUser: "",
+    credPass: "",
+  })
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }))
+
+  const projTasks = (tarefas ?? []).filter((t) => t.projeto_id === projeto.id)
+
+  function save() {
+    update.mutate(
+      {
+        id: projeto.id,
+        data: {
+          nome: form.nome,
+          origem: form.origem,
+          descricao: form.descricao || null,
+          site_url: form.site_url || null,
+          github_url: form.github_url || null,
+          vps_id: form.vps_id || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          if (form.credUser && form.credPass) {
+            upsertCred.mutate({ id: projeto.id, usuario: form.credUser, senha: form.credPass })
+          }
+          setEdit(false)
+          toast.success("Projeto salvo")
+        },
+        onError: (e) => toast.error("Erro ao salvar", e instanceof Error ? e.message : undefined),
+      }
+    )
+  }
+
+  async function doReveal() {
+    if (reveal) {
+      setReveal(null)
+      return
+    }
+    try {
+      const cred = await projetosApi.revelarCredencial(projeto.id)
+      setReveal(cred)
+    } catch (e) {
+      toast.error("Erro ao revelar", e instanceof Error ? e.message : undefined)
+    }
+  }
+
+  const head = (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+      <OriginTag origin={projeto.origem} />
+      <span style={{ fontWeight: 700, fontSize: 15 }} className="truncate">
+        {projeto.nome || "(sem nome)"}
+      </span>
+    </div>
+  )
+
+  const footer = edit ? (
+    <>
+      <Button variant="primary" icon="check" onClick={save} disabled={update.isPending} style={{ marginLeft: "auto" }}>
+        Salvar
+      </Button>
+    </>
+  ) : (
+    <>
+      <Button
+        icon="archive"
+        onClick={() => update.mutate({ id: projeto.id, data: { arquivado: !projeto.arquivado } })}
+        style={{ marginRight: "auto" }}
+      >
+        {projeto.arquivado ? "Desarquivar" : "Arquivar"}
+      </Button>
+      <Button variant="primary" icon="edit" onClick={() => setEdit(true)}>
+        Editar
+      </Button>
+    </>
+  )
+
+  return (
+    <Drawer title={head} onClose={onClose} footer={footer}>
+      {edit ? (
+        <div>
+          <Field label="Nome">
+            <TextInput value={form.nome} autoFocus onChange={(e) => set("nome", e.target.value)} placeholder="Nome do projeto" />
+          </Field>
+          <Field label="Dono / Origem">
+            <Select value={form.origem} onChange={(e) => set("origem", e.target.value as Origem)}>
+              {ORIGENS.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Descrição">
+            <TextArea value={form.descricao} onChange={(e) => set("descricao", e.target.value)} placeholder="O que é este projeto?" />
+          </Field>
+          <Field label="Link do site">
+            <TextInput value={form.site_url} onChange={(e) => set("site_url", e.target.value)} placeholder="https://" />
+          </Field>
+          <Field label="Repositório GitHub">
+            <TextInput value={form.github_url} onChange={(e) => set("github_url", e.target.value)} placeholder="https://github.com/…" />
+          </Field>
+          <Field label="VPS">
+            <Select value={form.vps_id} onChange={(e) => set("vps_id", e.target.value)}>
+              <option value="">— nenhuma —</option>
+              {(vpsList ?? []).map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.nome || v.ip}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="grid g-2" style={{ gap: 12 }}>
+            <Field label="Usuário (credencial)">
+              <TextInput value={form.credUser} onChange={(e) => set("credUser", e.target.value)} placeholder="admin" />
+            </Field>
+            <Field label="Senha (credencial)" hint="Cifrada no servidor.">
+              <TextInput
+                type="password"
+                value={form.credPass}
+                onChange={(e) => set("credPass", e.target.value)}
+                placeholder="••••"
+              />
+            </Field>
+          </div>
+          {projeto.tem_credencial && (
+            <Button variant="danger" size="sm" icon="trash" onClick={() => delCred.mutate(projeto.id)}>
+              Remover credencial salva
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div>
+          {projeto.descricao && (
+            <div className="det-block">
+              <span className="t-label">Descrição</span>
+              <p style={{ margin: "8px 0 0", lineHeight: 1.55 }}>{projeto.descricao}</p>
+            </div>
+          )}
+          {(projeto.site_url || projeto.github_url) && (
+            <div className="det-block">
+              <span className="t-label">Links</span>
+              <div className="row wrap" style={{ gap: 8, marginTop: 8 }}>
+                {projeto.site_url && (
+                  <a className="det-link" href={projeto.site_url} target="_blank" rel="noreferrer">
+                    <Icon name="external" size={14} /> Site
+                  </a>
+                )}
+                {projeto.github_url && (
+                  <a className="det-link" href={projeto.github_url} target="_blank" rel="noreferrer">
+                    <Icon name="external" size={14} /> GitHub
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+          {projeto.tem_credencial && (
+            <div className="det-block">
+              <span className="t-label">Credencial</span>
+              <div
+                className="card"
+                style={{ padding: "10px 13px", marginTop: 8, display: "flex", alignItems: "center", gap: 10, background: "var(--bg-2)" }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="mono" style={{ fontSize: 13 }}>
+                    {reveal ? reveal.usuario : "•••••"}
+                  </div>
+                  <div className="mono" style={{ letterSpacing: reveal ? 0 : 2 }}>
+                    {reveal ? reveal.senha : "••••••••"}
+                  </div>
+                </div>
+                <IconButton name={reveal ? "eyeoff" : "eye"} size={17} onClick={doReveal} />
+              </div>
+            </div>
+          )}
+          <div className="det-block">
+            <span className="t-label">VPS</span>
+            <div style={{ marginTop: 8 }}>
+              {projeto.vps ? (
+                <span className="chip static">
+                  <Icon name="server" size={14} /> {projeto.vps.nome || projeto.vps.ip}
+                </span>
+              ) : (
+                <span className="muted" style={{ fontSize: 13.5 }}>
+                  Sem servidor vinculado
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="det-block" style={{ marginBottom: 0 }}>
+            <div className="spread" style={{ marginBottom: 8 }}>
+              <span className="t-label">Tarefas ({projTasks.length})</span>
+              <Button
+                size="sm"
+                icon="plus"
+                onClick={() =>
+                  createTarefa.mutate(
+                    { titulo: "Nova tarefa", projeto_id: projeto.id },
+                    { onSuccess: () => toast.success("Tarefa criada") }
+                  )
+                }
+              >
+                Add
+              </Button>
+            </div>
+            {projTasks.length ? (
+              projTasks.map((t) => (
+                <div key={t.id} className="lrow" style={{ padding: "9px 4px" }}>
+                  <StatusPill status={t.status} late={isLate(t)} />
+                  <span style={{ flex: 1, fontWeight: 600 }} className="truncate">
+                    {t.titulo}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="muted" style={{ fontSize: 13.5, margin: 0 }}>
+                Nenhuma tarefa ainda.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </Drawer>
   )
 }

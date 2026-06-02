@@ -36,6 +36,11 @@ services:
     # env_file e que corrompe o hash Argon2 (ADMIN_PASSWORD_HASH).
     volumes:
       - ./.env:/app/.env:ro
+      # Skills do Claude (~/.claude/skills) montadas em /skills para gerenciar/criar/editar.
+      - ${CLAUDE_HOME:-./.claude}/skills:/skills:rw
+      # Skills de plugins e do Claude Desktop (somente leitura — origem para importar).
+      - ${CLAUDE_HOME:-./.claude}/plugins:/plugins:ro
+      - "${CLAUDE_DESKTOP_SKILLS:-${CLAUDE_HOME:-./.claude}}:/desktop-skills:ro"
     depends_on:
       db:
         condition: service_healthy

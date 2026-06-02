@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     totp_secret: str = ""
     session_timeout_minutes: int = 60
     app_env: str = "production"
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-4-5"
+    skills_dir: str = "/skills"
+    plugins_dir: str = "/plugins"
+    desktop_skills_dir: str = "/desktop-skills"
 
     @property
     def is_development(self) -> bool:

@@ -1,154 +1,182 @@
-import { ListTodo, Plus } from "lucide-react"
-import { useState } from "react"
-import { PageHeader } from "@/components/common/PageHeader"
-import { FilterBar, FilterChip } from "@/components/common/FilterBar"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Select } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { TarefaCard } from "@/components/tarefas/TarefaCard"
-import { TarefaModal } from "@/components/tarefas/TarefaModal"
-import { useTarefas } from "@/hooks/useTarefas"
+import { useMemo, useState } from "react"
+import type { Tarefa } from "@/api/tarefas"
+import { Icon } from "@/components/ui/Icon"
+import { Button, Empty, OriginTag, Select, StatusPill } from "@/components/ui/kit"
+import { daysUntil, dueLabel, isLate, origemMeta, STATUSES, subProgress } from "@/lib/domain"
 import { useProjetos } from "@/hooks/useProjetos"
-import { useTarefaStore } from "@/store/tarefaStore"
-import type { Status, Tarefa } from "@/api/tarefas"
+import { useCreateTarefa, useTarefas } from "@/hooks/useTarefas"
+import { toast } from "@/store/toastStore"
+import { useTaskModalStore } from "@/store/taskModalStore"
 
-const STATUS_OPTS: Array<{ value: Status | undefined; label: string }> = [
-  { value: undefined, label: "Todos" },
-  { value: "A Fazer", label: "A Fazer" },
-  { value: "Em Andamento", label: "Em Andamento" },
-  { value: "Em Revisao", label: "Em Revisão" },
-  { value: "Concluido", label: "Concluído" },
+type StatusFilter = "all" | "late" | (typeof STATUSES)[number]["id"]
+type Sort = "due" | "created" | "status"
+
+const SORTS: [Sort, string][] = [
+  ["due", "Prazo"],
+  ["created", "Recentes"],
+  ["status", "Status"],
 ]
 
 export function Tarefas() {
-  const { filters, setFilter } = useTarefaStore()
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [selecionadaId, setSelecionadaId] = useState<string | undefined>()
+  const openTask = useTaskModalStore((s) => s.open)
+  const { data: tarefas } = useTarefas()
+  const { data: projetos } = useProjetos()
+  const createTarefa = useCreateTarefa()
 
-  const { data: tarefas, isLoading, isError } = useTarefas({
-    status: filters.status,
-    projeto_id: filters.projeto_id,
-    com_prazo: filters.com_prazo || undefined,
-    order_by: filters.order_by,
-    order_dir: filters.order_dir,
-  })
-  const { data: projetos } = useProjetos({ arquivado: false })
+  const [status, setStatus] = useState<StatusFilter>("all")
+  const [proj, setProj] = useState("all")
+  const [sort, setSort] = useState<Sort>("due")
+  const [q, setQ] = useState("")
 
-  const tarefaSelecionada: Tarefa | undefined = selecionadaId
-    ? tarefas?.find((t) => t.id === selecionadaId)
-    : undefined
+  const all = tarefas ?? []
 
-  function handleEdit(t: Tarefa) {
-    setSelecionadaId(t.id)
-    setSheetOpen(true)
+  const list = useMemo(() => {
+    let l = all.slice()
+    if (status === "late") l = l.filter(isLate)
+    else if (status !== "all") l = l.filter((t) => t.status === status)
+    if (proj !== "all") l = l.filter((t) => t.projeto_id === proj)
+    if (q.trim()) l = l.filter((t) => (t.titulo || "").toLowerCase().includes(q.trim().toLowerCase()))
+    l.sort((a, b) => {
+      if (sort === "due") return (daysUntil(a.prazo) ?? 99999) - (daysUntil(b.prazo) ?? 99999)
+      if (sort === "created") return b.criado_em.localeCompare(a.criado_em)
+      return STATUSES.findIndex((s) => s.id === a.status) - STATUSES.findIndex((s) => s.id === b.status)
+    })
+    return l
+  }, [all, status, proj, sort, q])
+
+  function create() {
+    createTarefa.mutate(
+      { titulo: "Nova tarefa" },
+      {
+        onSuccess: (t: Tarefa) => openTask(t.id),
+        onError: (e) => toast.error("Erro ao criar", e instanceof Error ? e.message : undefined),
+      }
+    )
   }
 
-  function handleNew() {
-    setSelecionadaId(undefined)
-    setSheetOpen(true)
-  }
+  const abertas = all.filter((t) => t.status !== "Concluido").length
+  const statusFilters: { id: StatusFilter; label: string }[] = [
+    { id: "all", label: "Todas" },
+    ...STATUSES.map((s) => ({ id: s.id as StatusFilter, label: s.label })),
+    { id: "late", label: "Vencidas" },
+  ]
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="Tarefas"
-        action={
-          <Button onClick={handleNew} size="sm">
-            <Plus className="mr-1 h-4 w-4" />
-            Nova tarefa
-          </Button>
-        }
-      />
+    <div className="page">
+      <div className="page-head">
+        <div>
+          <h1 className="t-display">Tarefas</h1>
+          <div className="sub">
+            {abertas} abertas · {all.length} no total
+          </div>
+        </div>
+        <Button variant="primary" icon="plus" onClick={create}>
+          Nova tarefa
+        </Button>
+      </div>
 
-      <FilterBar>
-        {STATUS_OPTS.map((opt) => (
-          <FilterChip
-            key={String(opt.value)}
-            active={filters.status === opt.value}
-            onClick={() => setFilter("status", opt.value)}
+      {all.length ? (
+        <>
+          <div className="row wrap" style={{ gap: 8, marginBottom: 14 }}>
+            {statusFilters.map((s) => (
+              <span
+                key={s.id}
+                className={"chip" + (status === s.id ? " on" : "")}
+                onClick={() => setStatus(s.id)}
+              >
+                {s.label}
+              </span>
+            ))}
+          </div>
+
+          <div className="row wrap" style={{ gap: 10, marginBottom: 18 }}>
+            <div className="input-icon" style={{ flex: 1, minWidth: 180, maxWidth: 260 }}>
+              <Icon name="search" />
+              <input
+                className="input"
+                value={q}
+                placeholder="Buscar tarefa…"
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+            <Select value={proj} onChange={(e) => setProj(e.target.value)} style={{ maxWidth: 200 }}>
+              <option value="all">Todos os projetos</option>
+              {(projetos ?? []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome || "(sem nome)"}
+                </option>
+              ))}
+            </Select>
+            <div className="seg" style={{ marginLeft: "auto" }}>
+              {SORTS.map(([id, lbl]) => (
+                <button key={id} className={sort === id ? "on" : ""} onClick={() => setSort(id)}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {list.length ? (
+            <div className="card card-pad">
+              {list.map((t) => {
+                const lt = isLate(t)
+                const dl = dueLabel(t.prazo)
+                const p = (projetos ?? []).find((x) => x.id === t.projeto_id)
+                const sp = subProgress(t)
+                return (
+                  <div key={t.id} className="lrow click" onClick={() => openTask(t.id)}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }} className="truncate">
+                        {t.titulo || "(sem título)"}
+                      </div>
+                      <div className="row" style={{ gap: 8 }}>
+                        {p && <OriginTag origin={origemMeta(p.origem).id} />}
+                        {sp.total ? (
+                          <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <Icon name="check_list" size={13} />
+                            {sp.done}/{sp.total}
+                          </span>
+                        ) : null}
+                        {t.links.length ? (
+                          <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <Icon name="link" size={13} />
+                            {t.links.length}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <StatusPill status={t.status} late={lt} />
+                    <span
+                      className="t-meta mono"
+                      style={{ width: 70, textAlign: "right", color: lt ? "var(--danger)" : "var(--muted)" }}
+                    >
+                      {dl.txt}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="card card-pad">
+              <Empty icon="check_list" title="Nenhuma tarefa neste filtro" />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="card card-pad">
+          <Empty
+            icon="check_list"
+            title="Nenhuma tarefa ainda"
+            action={
+              <Button variant="primary" icon="plus" onClick={create}>
+                Criar primeira tarefa
+              </Button>
+            }
           >
-            {opt.label}
-          </FilterChip>
-        ))}
-
-        <Select
-          value={filters.projeto_id ?? ""}
-          onChange={(e) => setFilter("projeto_id", e.target.value || undefined)}
-          className="h-9 w-auto"
-        >
-          <option value="">Todos os projetos</option>
-          {projetos?.map((p) => (
-            <option key={p.id} value={p.id}>{p.nome}</option>
-          ))}
-        </Select>
-
-        <Checkbox
-          id="com-prazo"
-          label="Com prazo"
-          checked={filters.com_prazo}
-          onChange={(e) => setFilter("com_prazo", e.target.checked)}
-        />
-
-        <Select
-          value={`${filters.order_by}:${filters.order_dir}`}
-          onChange={(e) => {
-            const [ob, od] = e.target.value.split(":") as ["criado_em" | "prazo" | "prioridade", "asc" | "desc"]
-            setFilter("order_by", ob)
-            setFilter("order_dir", od)
-          }}
-          className="h-9 w-auto"
-        >
-          <option value="criado_em:desc">Mais recentes</option>
-          <option value="criado_em:asc">Mais antigas</option>
-          <option value="prazo:asc">Prazo (mais próximo)</option>
-          <option value="prazo:desc">Prazo (mais distante)</option>
-        </Select>
-      </FilterBar>
-
-      {/* Estados */}
-      {isError && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar tarefas. Tente novamente.
+            Cada tarefa tem subtarefas (checklist) e links. Abra uma para editar tudo.
+          </Empty>
         </div>
       )}
-
-      {isLoading && (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-md" />
-          ))}
-        </div>
-      )}
-
-      {!isLoading && !isError && tarefas?.length === 0 && (
-        <EmptyState
-          icon={<ListTodo className="h-6 w-6" />}
-          title="Nenhuma tarefa encontrada"
-          description="Crie uma tarefa ou ajuste os filtros."
-          action={
-            <Button onClick={handleNew} variant="outline" size="sm">
-              <Plus className="mr-1 h-4 w-4" />
-              Criar primeira tarefa
-            </Button>
-          }
-        />
-      )}
-
-      {!isLoading && !isError && tarefas && tarefas.length > 0 && (
-        <div className="space-y-2">
-          {tarefas.map((t) => (
-            <TarefaCard key={t.id} tarefa={t} onClick={() => handleEdit(t)} />
-          ))}
-        </div>
-      )}
-
-      <TarefaModal
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        tarefa={tarefaSelecionada}
-      />
     </div>
   )
 }

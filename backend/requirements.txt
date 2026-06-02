@@ -11,3 +11,4 @@ itsdangerous==2.2.0
 slowapi==0.1.9
 cryptography==44.0.0
 python-multipart==0.0.20
+anthropic==0.40.0

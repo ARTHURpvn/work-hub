@@ -1,9 +1,8 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { apiLogin, apiMe } from "@/api/auth"
+import { Icon } from "@/components/ui/Icon"
+import { Button, Field, IconButton } from "@/components/ui/kit"
 import { useAuthStore } from "@/store/authStore"
 
 export function Login() {
@@ -13,6 +12,7 @@ export function Login() {
   const [password, setPassword] = useState("")
   const [totpCode, setTotpCode] = useState("")
   const [totpRequired, setTotpRequired] = useState(false)
+  const [show, setShow] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -20,16 +20,13 @@ export function Login() {
     e.preventDefault()
     setError("")
     setLoading(true)
-
     try {
       const result = await apiLogin({ password, totp_code: totpRequired ? totpCode : undefined })
-
       if (result.totp_required) {
         setTotpRequired(true)
         setLoading(false)
         return
       }
-
       const me = await apiMe()
       setAuthenticated(me.email, me.totp_enabled)
       navigate("/", { replace: true })
@@ -41,53 +38,64 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-bold">workhub</h1>
-          <p className="text-sm text-muted-foreground">Entre com sua conta para continuar</p>
-        </div>
+    <div className="login-screen">
+      <form className="login-card fade-in" onSubmit={handleSubmit}>
+        <div className="login-mark">w</div>
+        <h1>workhub</h1>
+        <p className="lead">Painel pessoal · digite sua senha</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
+        <Field label="Senha">
+          <div className="input-icon">
+            <Icon name="lock" />
+            <input
+              className="input"
+              type={show ? "text" : "password"}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
               autoFocus
+              autoComplete="current-password"
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               disabled={totpRequired}
+              style={{ paddingRight: 40 }}
+            />
+            <IconButton
+              name={show ? "eyeoff" : "eye"}
+              size={16}
+              className="input-affix"
+              style={{ width: 30, height: 30 }}
+              onClick={() => setShow((s) => !s)}
+              tabIndex={-1}
             />
           </div>
+        </Field>
 
-          {totpRequired && (
-            <div className="space-y-2">
-              <Label htmlFor="totp">Código 2FA (TOTP)</Label>
-              <Input
-                id="totp"
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                autoComplete="one-time-code"
-                placeholder="000000"
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)}
-                autoFocus
-                required
-              />
-            </div>
-          )}
+        {totpRequired && (
+          <Field label="Código 2FA (TOTP)">
+            <input
+              className="input"
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              autoComplete="one-time-code"
+              placeholder="000000"
+              value={totpCode}
+              autoFocus
+              onChange={(e) => setTotpCode(e.target.value)}
+            />
+          </Field>
+        )}
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+        <div className="login-err">{error}</div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Entrando..." : totpRequired ? "Verificar código" : "Entrar"}
-          </Button>
-        </form>
-      </div>
+        <Button variant="primary" className="btn-full" type="submit" disabled={loading}>
+          {loading ? "Entrando..." : totpRequired ? "Verificar código" : "Entrar"}
+        </Button>
+
+        <div className="login-foot">
+          <Icon name="lock" size={13} style={{ color: "var(--muted)" }} />
+          <span className="t-meta">Acesso protegido por senha.</span>
+        </div>
+      </form>
     </div>
   )
 }
