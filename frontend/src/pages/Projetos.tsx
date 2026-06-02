@@ -357,23 +357,26 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
               <p style={{ margin: "8px 0 0", lineHeight: 1.55 }}>{projeto.descricao}</p>
             </div>
           )}
-          {(projeto.site_url || projeto.github_url) && (
-            <div className="det-block">
-              <span className="t-label">Links</span>
-              <div className="row wrap" style={{ gap: 8, marginTop: 8 }}>
-                {projeto.site_url && (
-                  <a className="det-link" href={projeto.site_url} target="_blank" rel="noreferrer">
-                    <Icon name="external" size={14} /> Site
-                  </a>
-                )}
-                {projeto.github_url && (
-                  <a className="det-link" href={projeto.github_url} target="_blank" rel="noreferrer">
-                    <Icon name="external" size={14} /> GitHub
-                  </a>
-                )}
-              </div>
+          <div className="det-block">
+            <span className="t-label">Links</span>
+            <div className="row wrap" style={{ gap: 8, marginTop: 8 }}>
+              {projeto.site_url && (
+                <a className="det-link" href={projeto.site_url} target="_blank" rel="noreferrer">
+                  <Icon name="external" size={14} /> Site
+                </a>
+              )}
+              {projeto.github_url && (
+                <a className="det-link" href={projeto.github_url} target="_blank" rel="noreferrer">
+                  <Icon name="external" size={14} /> GitHub
+                </a>
+              )}
+              {!projeto.site_url && !projeto.github_url && (
+                <button className="det-link" onClick={() => setEdit(true)} style={{ cursor: "pointer" }}>
+                  <Icon name="plus" size={14} /> Adicionar site / GitHub
+                </button>
+              )}
             </div>
-          )}
+          </div>
           {projeto.tem_credencial && (
             <div className="det-block">
               <span className="t-label">Credencial</span>

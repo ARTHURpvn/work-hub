@@ -5,7 +5,7 @@
 ```mermaid
 graph TB
     subgraph Browser
-      FE[Frontend SPA<br/>Vite + React + TS + Tailwind + shadcn/ui<br/>dnd-kit · TanStack Query]
+      FE[Frontend SPA<br/>Vite + React 19 + TS + Tailwind v4<br/>design system próprio · TanStack Query]
     end
 
     subgraph VPS [VPS do usuário · Docker]
@@ -34,7 +34,7 @@ graph TB
 ```
 
 ## Camadas
-- **Frontend (SPA):** Vite + React + TypeScript. UI com **shadcn/ui** (Radix + Tailwind) — componentes prontos, mas copiados para o repo e personalizáveis. Kanban com **dnd-kit**. Estado de servidor com **TanStack Query**.
+- **Frontend (SPA):** Vite + React 19 + TypeScript. UI com **design system próprio** — CSS por classes dirigido por custom properties (paleta laranja, temas claro/escuro, fonte Open Sans), primitivos em `components/ui` (`kit`, `Modal`, `Drawer`, `Icon`). Tailwind v4 importado para utilitários pontuais. Kanban com drag HTML5 nativo. Estado de servidor com **TanStack Query**; UI/tema com **zustand**. Ver `docs/DESIGN_SYSTEM.md` e `docs/DESIGN_LAYOUT_COMPONENTS.md`.
 - **API (FastAPI):** REST, validação Pydantic, autenticação, regras de negócio, ORM **SQLAlchemy 2.0**. Migrations com **Alembic**.
 - **Worker:** processo separado (`asyncio`) responsável por: (1) **ingestor** que lê `~/.claude/` e grava no Postgres; (2) **job runner** que inicia/para agentes via Agent SDK; (3) **scheduler** (APScheduler) para crons (ex.: ingestão periódica, LinkedIn na Fase 2); (4) **sync** de calendário.
 - **Postgres:** container Docker na VPS, volume persistente.
@@ -58,4 +58,4 @@ graph TB
 - Variáveis em `.env` (ver `PREREQUISITOS.md`). Backup de volume do Postgres recomendado.
 
 ## Stack default (puxado para `/feature` quando o usuário não especificar mais detalhe)
-Python 3.11+, FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2, `claude-agent-sdk`, APScheduler · React 18, Vite, TypeScript, Tailwind, shadcn/ui, dnd-kit, TanStack Query, React Router · PostgreSQL 16, Docker Compose, Caddy.
+Python 3.11+, FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2, `claude-agent-sdk`, APScheduler · React 19, Vite, TypeScript, Tailwind v4 (design system próprio), TanStack Query, zustand, React Router · PostgreSQL 16, Docker Compose, Caddy.
