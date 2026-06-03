@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { Calendario } from "@/pages/Calendario"
+import { Configuracoes } from "@/pages/Configuracoes"
 import { Dashboard } from "@/pages/Dashboard"
 import { Kanban } from "@/pages/Kanban"
 import { Login } from "@/pages/Login"
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="calendario" element={<Calendario />} />
         <Route path="skills" element={<Skills />} />
         <Route path="skills/:origem/:slug" element={<SkillDetail />} />
+        <Route path="configuracoes" element={<Configuracoes />} />
       </Route>
     </Routes>
   )

@@ -87,6 +87,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="nav-foot">
         <div className="nav-sep" />
+        <NavLink
+          to="/configuracoes"
+          onClick={onNavigate}
+          className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
+        >
+          <Icon name="settings" />
+          <span>Configurações</span>
+        </NavLink>
         <button className="nav-item" onClick={logout}>
           <Icon name="logout" />
           <span>Sair</span>

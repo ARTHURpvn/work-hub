@@ -163,21 +163,23 @@ def importar(origem: str, slug: str) -> dict:
     return obter("pessoal", slug)  # type: ignore[return-value]
 
 
-async def chat(conteudo: str, mensagens: list[dict]) -> dict:
+async def chat(conteudo: str, mensagens: list[dict], api_key: str = "", model: str = "") -> dict:
     """Conversa multi-turno para melhorar a skill.
 
     `mensagens`: lista [{role: "user"|"assistant", content: str}] já trocada.
     Retorna {"reply": str, "sugestao_conteudo": str | None}: a resposta do
     assistente e, quando ele propõe uma mudança, o SKILL.md completo revisado.
     """
-    if not settings.anthropic_api_key:
-        raise ValueError("ANTHROPIC_API_KEY não configurada no .env")
+    api_key = api_key or settings.anthropic_api_key
+    model = model or settings.anthropic_model
+    if not api_key:
+        raise ValueError("Chave da API Anthropic não configurada — defina em Configurações")
 
     import json
 
     from anthropic import AsyncAnthropic
 
-    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = AsyncAnthropic(api_key=api_key)
     system = (
         "Você é um especialista em Claude Code Skills ajudando a melhorar um arquivo SKILL.md. "
         "Converse em português do Brasil, de forma direta e técnica. "
@@ -199,7 +201,7 @@ async def chat(conteudo: str, mensagens: list[dict]) -> dict:
         raise ValueError("nenhuma mensagem para enviar")
 
     msg = await client.messages.create(
-        model=settings.anthropic_model,
+        model=model,
         max_tokens=4000,
         system=system,
         messages=api_msgs,
@@ -220,13 +222,15 @@ async def chat(conteudo: str, mensagens: list[dict]) -> dict:
     return {"reply": reply, "sugestao_conteudo": sugestao}
 
 
-async def melhorar(conteudo: str) -> str:
-    if not settings.anthropic_api_key:
-        raise ValueError("ANTHROPIC_API_KEY não configurada no .env")
+async def melhorar(conteudo: str, api_key: str = "", model: str = "") -> str:
+    api_key = api_key or settings.anthropic_api_key
+    model = model or settings.anthropic_model
+    if not api_key:
+        raise ValueError("Chave da API Anthropic não configurada — defina em Configurações")
 
     from anthropic import AsyncAnthropic
 
-    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = AsyncAnthropic(api_key=api_key)
     prompt = (
         "Você é especialista em Claude Code Skills. Aprimore o arquivo SKILL.md abaixo: "
         "melhore a clareza da descrição (frontmatter `description`, que deve dizer claramente "
@@ -235,7 +239,7 @@ async def melhorar(conteudo: str) -> str:
         f"{conteudo}"
     )
     msg = await client.messages.create(
-        model=settings.anthropic_model,
+        model=model,
         max_tokens=4000,
         messages=[{"role": "user", "content": prompt}],
     )
