@@ -15,6 +15,7 @@ import {
   TextInput,
 } from "@/components/ui/kit"
 import { isLate, ORIGENS } from "@/lib/domain"
+import { copyText } from "@/lib/utils"
 import { useCreateProjeto, useProjetos, useUpdateProjeto } from "@/hooks/useProjetos"
 import { useDeleteCredencial, useUpsertCredencial } from "@/hooks/useCredencial"
 import { useCreateTarefa, useTarefas } from "@/hooks/useTarefas"
@@ -178,14 +179,30 @@ function ProjectCard({ p, onOpen }: { p: Projeto; onOpen: () => void }) {
       </div>
       <div className="row wrap" style={{ gap: 7 }}>
         {p.site_url && (
-          <span className="chip static">
-            <Icon name="external" size={13} /> site
-          </span>
+          <a
+            className="chip"
+            href={p.site_url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title={p.site_url}
+            style={{ textDecoration: "none" }}
+          >
+            <Icon name="external" size={13} /> Site
+          </a>
         )}
         {p.github_url && (
-          <span className="chip static">
+          <a
+            className="chip"
+            href={p.github_url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title={p.github_url}
+            style={{ textDecoration: "none" }}
+          >
             <Icon name="external" size={13} /> GitHub
-          </span>
+          </a>
         )}
         {p.tem_credencial && (
           <span className="chip static">
@@ -400,15 +417,30 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
             <span className="t-label">VPS</span>
             <div style={{ marginTop: 8 }}>
               {projeto.vps ? (
-                <span className="chip static">
+                <button
+                  className="chip"
+                  title={`Copiar: ssh root@${projeto.vps.ip}`}
+                  onClick={async () => {
+                    const cmd = `ssh root@${projeto.vps!.ip}`
+                    const ok = await copyText(cmd)
+                    if (ok) toast.success("Copiado", cmd)
+                    else toast.error("Não foi possível copiar", cmd)
+                  }}
+                >
                   <Icon name="server" size={14} /> {projeto.vps.nome || projeto.vps.ip}
-                </span>
+                  <Icon name="copy" size={13} />
+                </button>
               ) : (
                 <span className="muted" style={{ fontSize: 13.5 }}>
                   Sem servidor vinculado
                 </span>
               )}
             </div>
+            {projeto.vps && (
+              <div className="t-meta mono" style={{ marginTop: 6 }}>
+                ssh root@{projeto.vps.ip}
+              </div>
+            )}
           </div>
           <div className="det-block" style={{ marginBottom: 0 }}>
             <div className="spread" style={{ marginBottom: 8 }}>

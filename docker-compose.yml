@@ -41,6 +41,8 @@ services:
       # Skills de plugins e do Claude Desktop (somente leitura — origem para importar).
       - ${CLAUDE_HOME:-./.claude}/plugins:/plugins:ro
       - "${CLAUDE_DESKTOP_SKILLS:-${CLAUDE_HOME:-./.claude}}:/desktop-skills:ro"
+      # Estatísticas de uso do Claude Code (somente leitura) para o widget de uso.
+      - "${CLAUDE_HOME:-./.claude}/stats-cache.json:/claude-stats.json:ro"
     depends_on:
       db:
         condition: service_healthy

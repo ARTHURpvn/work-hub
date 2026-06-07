@@ -1,14 +1,15 @@
-export type SkillOrigem = "pessoal" | "plugin" | "desktop"
-
-export interface SkillResumo {
-  slug: string
+import { onUnauthorized } from "@/lib/session"
+export interface Skill {
+  id: string
+  skill_id: string
   name: string
-  description: string | null
-  origem: SkillOrigem
-  editavel: boolean
+  display_title: string
+  descricao: string | null
+  versao_atual: string | null
+  atualizado_em: string
 }
 
-export interface Skill extends SkillResumo {
+export interface SkillDetalhe extends Skill {
   conteudo: string
 }
 
@@ -22,6 +23,17 @@ export interface SkillChatResponse {
   sugestao_conteudo: string | null
 }
 
+export interface MigrarErro {
+  name: string
+  erro: string
+}
+
+export interface MigrarResultado {
+  criadas: number
+  puladas: number
+  erros: MigrarErro[]
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api/v1${path}`, {
     credentials: "include",
@@ -29,6 +41,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   })
   if (!res.ok) {
+    if (res.status === 401) onUnauthorized()
     const data = await res.json().catch(() => ({}))
     throw new Error(data?.detail ?? `Erro ${res.status}`)
   }
@@ -37,20 +50,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const skillsApi = {
-  list: () => request<SkillResumo[]>("/skills"),
-  get: (origem: SkillOrigem, slug: string) => request<Skill>(`/skills/${origem}/${slug}`),
-  create: (body: { slug: string; name: string; description: string }) =>
-    request<Skill>("/skills", { method: "POST", body: JSON.stringify(body) }),
-  update: (slug: string, conteudo: string) =>
-    request<Skill>(`/skills/pessoal/${slug}`, { method: "PUT", body: JSON.stringify({ conteudo }) }),
-  remove: (slug: string) => request<void>(`/skills/pessoal/${slug}`, { method: "DELETE" }),
-  importar: (origem: SkillOrigem, slug: string) =>
-    request<Skill>(`/skills/${origem}/${slug}/importar`, { method: "POST" }),
-  melhorar: (slug: string) =>
-    request<{ sugestao: string }>(`/skills/pessoal/${slug}/melhorar`, { method: "POST" }),
-  chat: (slug: string, mensagens: ChatMensagem[]) =>
-    request<SkillChatResponse>(`/skills/pessoal/${slug}/chat`, {
-      method: "POST",
-      body: JSON.stringify({ mensagens }),
-    }),
+  list: () => request<Skill[]>("/skills"),
+  get: (id: string) => request<SkillDetalhe>(`/skills/${id}`),
+  create: (body: { display_title: string; conteudo: string }) =>
+    request<SkillDetalhe>("/skills", { method: "POST", body: JSON.stringify(body) }),
+  update: (id: string, body: { conteudo: string; display_title?: string }) =>
+    request<SkillDetalhe>(`/skills/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  remove: (id: string) => request<void>(`/skills/${id}`, { method: "DELETE" }),
+  migrar: () => request<MigrarResultado>("/skills/migrar", { method: "POST" }),
+  chat: (id: string, mensagens: ChatMensagem[]) =>
+    request<SkillChatResponse>(`/skills/${id}/chat`, { method: "POST", body: JSON.stringify({ mensagens }) }),
 }

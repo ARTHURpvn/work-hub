@@ -1,3 +1,4 @@
+import { onUnauthorized } from "@/lib/session"
 export type Status = "A Fazer" | "Em Andamento" | "Em Revisao" | "Concluido"
 export type Prioridade = "baixa" | "media" | "alta"
 
@@ -58,6 +59,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   })
   if (!res.ok) {
+    if (res.status === 401) onUnauthorized()
     const data = await res.json().catch(() => ({}))
     throw new Error(data?.detail ?? `Erro ${res.status}`)
   }

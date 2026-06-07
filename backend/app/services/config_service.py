@@ -27,6 +27,16 @@ CHAVES: dict[str, dict] = {
         "placeholder": settings.anthropic_model,
         "ajuda": "Modelo usado nas chamadas de IA.",
     },
+    "CLAUDE_CODE_OAUTH_TOKEN": {
+        "label": "Token do Claude Code (assinatura)",
+        "secret": True,
+        "placeholder": "rode 'claude setup-token' e cole aqui",
+        "ajuda": (
+            "Se preenchido, o 'Melhorar com IA' / chat usam sua ASSINATURA do Claude Code "
+            "(não gasta créditos de API). Gere com 'claude setup-token'. A gerência de skills "
+            "continua usando a chave de API."
+        ),
+    },
 }
 
 
@@ -99,3 +109,8 @@ async def get_anthropic(session: AsyncSession) -> tuple[str, str]:
     api_key = await get_valor(session, "ANTHROPIC_API_KEY") or settings.anthropic_api_key
     model = await get_valor(session, "ANTHROPIC_MODEL") or settings.anthropic_model
     return api_key, model
+
+
+async def get_claude_code_token(session: AsyncSession) -> str | None:
+    """Token de assinatura do Claude Code (setup-token), se configurado."""
+    return await get_valor(session, "CLAUDE_CODE_OAUTH_TOKEN")

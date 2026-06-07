@@ -1,16 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { skillsApi, type ChatMensagem, type SkillOrigem } from "@/api/skills"
+import { skillsApi, type ChatMensagem } from "@/api/skills"
 import { Icon } from "@/components/ui/Icon"
 import { Button, IconButton } from "@/components/ui/kit"
 import { useSkillMutations } from "@/hooks/useSkills"
 import { confirm } from "@/store/confirmStore"
 import { toast } from "@/store/toastStore"
 
-const ORIGENS: SkillOrigem[] = ["pessoal", "plugin", "desktop"]
-const SRC_LABEL: Record<SkillOrigem, string> = { pessoal: "Minha", plugin: "Plugin", desktop: "Desktop" }
-const SRC_CLS: Record<SkillOrigem, string> = { pessoal: "tag-otavio", plugin: "tag-titan", desktop: "tag-free" }
 const SUGESTOES = ["Reescrever mais curto", "Adicionar exemplos", "Checar contradições"]
 
 interface Msg {
@@ -29,17 +26,15 @@ function diffLinhas(atual: string, novo: string): { add: string[]; del: string[]
 }
 
 export function SkillDetail() {
-  const { origem, slug } = useParams<{ origem: string; slug: string }>()
+  const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const { update, remove, importar, chat } = useSkillMutations()
-
-  const validOrigem = ORIGENS.includes(origem as SkillOrigem) ? (origem as SkillOrigem) : null
+  const { update, remove, chat } = useSkillMutations()
 
   const { data: skill, isLoading, isError } = useQuery({
-    queryKey: ["skill", origem, slug],
-    queryFn: () => skillsApi.get(validOrigem!, slug!),
-    enabled: !!validOrigem && !!slug,
+    queryKey: ["skill", id],
+    queryFn: () => skillsApi.get(id!),
+    enabled: !!id,
   })
 
   const [conteudo, setConteudo] = useState("")
@@ -49,8 +44,6 @@ export function SkillDetail() {
   const [pendingIdx, setPendingIdx] = useState<number | null>(null)
   const threadRef = useRef<HTMLDivElement>(null)
 
-  const editavel = skill?.editavel ?? false
-
   useEffect(() => {
     if (skill) {
       setConteudo(skill.conteudo)
@@ -58,7 +51,7 @@ export function SkillDetail() {
       setMsgs([
         {
           who: "ai",
-          text: `Li a skill "${skill.name}". Como quer melhorá-la? Posso reescrever, adicionar exemplos ou checar contradições.`,
+          text: `Li a skill "${skill.display_title}". Como quer melhorá-la? Posso reescrever, adicionar exemplos ou checar contradições.`,
         },
       ])
       setPendingIdx(null)
@@ -69,15 +62,6 @@ export function SkillDetail() {
     if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight
   }, [msgs, chat.isPending])
 
-  if (!validOrigem || !slug) {
-    return (
-      <div className="page">
-        <p className="muted">Skill inválida.</p>
-        <Button onClick={() => navigate("/skills")}>Voltar</Button>
-      </div>
-    )
-  }
-
   if (isLoading) {
     return (
       <div className="page">
@@ -85,8 +69,7 @@ export function SkillDetail() {
       </div>
     )
   }
-
-  if (isError || !skill) {
+  if (isError || !skill || !id) {
     return (
       <div className="page">
         <p className="muted">Skill não encontrada.</p>
@@ -99,11 +82,12 @@ export function SkillDetail() {
 
   function salvar() {
     update.mutate(
-      { slug: slug!, conteudo },
+      { id: id!, conteudo },
       {
         onSuccess: () => {
+          qc.invalidateQueries({ queryKey: ["skill", id] })
           setDirty(false)
-          toast.success("Skill salva")
+          toast.success("Nova versão salva na API")
         },
         onError: (e) => toast.error("Erro ao salvar", e instanceof Error ? e.message : undefined),
       }
@@ -113,31 +97,18 @@ export function SkillDetail() {
   async function excluir() {
     const ok = await confirm({
       title: "Excluir skill?",
-      description: "A pasta da skill será removida do disco. Esta ação não pode ser desfeita.",
+      description: "Remove todas as versões e a skill no workspace da API. Não pode ser desfeito.",
       confirmLabel: "Excluir",
       destructive: true,
     })
     if (!ok) return
-    remove.mutate(slug!, {
+    remove.mutate(id!, {
       onSuccess: () => {
         toast.success("Skill excluída")
         navigate("/skills")
       },
       onError: (e) => toast.error("Erro ao excluir", e instanceof Error ? e.message : undefined),
     })
-  }
-
-  function doImport() {
-    importar.mutate(
-      { origem: validOrigem!, slug: slug! },
-      {
-        onSuccess: (novo) => {
-          toast.success("Importada para as suas")
-          navigate(`/skills/pessoal/${novo.slug}`)
-        },
-        onError: (e) => toast.error("Erro ao importar", e instanceof Error ? e.message : undefined),
-      }
-    )
   }
 
   function send(text?: string) {
@@ -151,7 +122,7 @@ export function SkillDetail() {
       content: m.text,
     }))
     chat.mutate(
-      { slug: slug!, mensagens },
+      { id: id!, mensagens },
       {
         onSuccess: (r) => {
           setMsgs((m) => {
@@ -166,15 +137,15 @@ export function SkillDetail() {
 
   function aplicar(sugestao: string) {
     update.mutate(
-      { slug: slug!, conteudo: sugestao },
+      { id: id!, conteudo: sugestao },
       {
         onSuccess: () => {
-          qc.invalidateQueries({ queryKey: ["skill", origem, slug] })
+          qc.invalidateQueries({ queryKey: ["skill", id] })
           setConteudo(sugestao)
           setDirty(false)
           setPendingIdx(null)
-          toast.success("Sugestão aplicada")
-          setMsgs((m) => [...m, { who: "ai", text: "Aplicado! O conteúdo ao lado foi atualizado." }])
+          toast.success("Sugestão aplicada (nova versão)")
+          setMsgs((m) => [...m, { who: "ai", text: "Aplicado! Nova versão criada na API." }])
         },
         onError: (e) => toast.error("Erro ao aplicar", e instanceof Error ? e.message : undefined),
       }
@@ -195,160 +166,136 @@ export function SkillDetail() {
           <div className="grow" style={{ minWidth: 0 }}>
             <div className="row" style={{ gap: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 16 }} className="truncate">
-                {skill.name}
+                {skill.display_title}
               </span>
-              <span className={"tag " + SRC_CLS[validOrigem]}>
-                <span className="dot" />
-                {SRC_LABEL[validOrigem]}
+              <span className="tag tag-otavio">
+                <span className="dot" /> custom
               </span>
             </div>
-            <div className="t-meta mono">{slug}</div>
+            <div className="t-meta mono">
+              {skill.name}
+              {skill.versao_atual ? ` · v${skill.versao_atual}` : ""}
+            </div>
           </div>
         </div>
-        {editavel ? (
-          <>
-            <Button variant="danger" size="sm" icon="trash" onClick={excluir}>
-              Excluir
-            </Button>
-            <Button variant="primary" size="sm" icon="check" onClick={salvar} disabled={!dirty || update.isPending}>
-              {update.isPending ? "Salvando…" : dirty ? "Salvar" : "Salvo"}
-            </Button>
-          </>
-        ) : (
-          <Button variant="primary" size="sm" icon="download" onClick={doImport} disabled={importar.isPending}>
-            Importar para as minhas
-          </Button>
-        )}
+        <Button variant="danger" size="sm" icon="trash" onClick={excluir}>
+          Excluir
+        </Button>
+        <Button variant="primary" size="sm" icon="check" onClick={salvar} disabled={!dirty || update.isPending}>
+          {update.isPending ? "Salvando…" : dirty ? "Salvar versão" : "Salvo"}
+        </Button>
       </div>
 
       <div className="skill-detail-body">
-        {/* esquerda: chat (só editável) */}
         <div className="skill-pane left">
-          {editavel ? (
-            <div className="chat-wrap">
-              <div className="skill-pane-head">
-                <Icon name="sparkle" size={16} style={{ color: "var(--accent)" }} />
-                <span className="grow" style={{ fontWeight: 700 }}>
-                  Melhorar com IA
-                </span>
-              </div>
-              <div className="chat-thread" ref={threadRef}>
-                {msgs.map((m, i) => {
-                  const dif = m.sugestao ? diffLinhas(conteudo, m.sugestao) : null
-                  return (
-                    <div key={i} className={"cmsg " + (m.who === "ai" ? "ai" : "me")}>
-                      <div className="cav">{m.who === "ai" ? <Icon name="sparkle" size={14} /> : "EU"}</div>
-                      <div className="cbubble">
-                        {m.text}
-                        {dif && (dif.add.length > 0 || dif.del.length > 0) ? (
-                          <div>
-                            <div className="cdiff">
-                              {dif.del.map((d, j) => (
-                                <div key={"d" + j} className="ln del">
-                                  <span className="s">−</span>
-                                  {d}
-                                </div>
-                              ))}
-                              {dif.add.map((a, j) => (
-                                <div key={"a" + j} className="ln add">
-                                  <span className="s">+</span>
-                                  {a}
-                                </div>
-                              ))}
-                            </div>
-                            {pendingIdx === i ? (
-                              <div className="row" style={{ gap: 8, marginTop: 10 }}>
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  icon="check"
-                                  onClick={() => aplicar(m.sugestao!)}
-                                  disabled={update.isPending}
-                                >
-                                  Aplicar
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => setPendingIdx(null)}>
-                                  Descartar
-                                </Button>
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  )
-                })}
-                {chat.isPending ? (
-                  <div className="cmsg ai">
-                    <div className="cav">
-                      <Icon name="sparkle" size={14} />
-                    </div>
+          <div className="chat-wrap">
+            <div className="skill-pane-head">
+              <Icon name="sparkle" size={16} style={{ color: "var(--accent)" }} />
+              <span className="grow" style={{ fontWeight: 700 }}>
+                Melhorar com IA
+              </span>
+            </div>
+            <div className="chat-thread" ref={threadRef}>
+              {msgs.map((m, i) => {
+                const dif = m.sugestao ? diffLinhas(conteudo, m.sugestao) : null
+                return (
+                  <div key={i} className={"cmsg " + (m.who === "ai" ? "ai" : "me")}>
+                    <div className="cav">{m.who === "ai" ? <Icon name="sparkle" size={14} /> : "EU"}</div>
                     <div className="cbubble">
-                      <div className="typing">
-                        <span />
-                        <span />
-                        <span />
-                      </div>
+                      {m.text}
+                      {dif && (dif.add.length > 0 || dif.del.length > 0) ? (
+                        <div>
+                          <div className="cdiff">
+                            {dif.del.map((d, j) => (
+                              <div key={"d" + j} className="ln del">
+                                <span className="s">−</span>
+                                {d}
+                              </div>
+                            ))}
+                            {dif.add.map((a, j) => (
+                              <div key={"a" + j} className="ln add">
+                                <span className="s">+</span>
+                                {a}
+                              </div>
+                            ))}
+                          </div>
+                          {pendingIdx === i ? (
+                            <div className="row" style={{ gap: 8, marginTop: 10 }}>
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                icon="check"
+                                onClick={() => aplicar(m.sugestao!)}
+                                disabled={update.isPending}
+                              >
+                                Aplicar
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setPendingIdx(null)}>
+                                Descartar
+                              </Button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                ) : null}
-              </div>
-
-              <div className="csuggest">
-                {SUGESTOES.map((s) => (
-                  <button key={s} className="csug" onClick={() => send(s)}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-
-              <div className="composer">
-                <textarea
-                  value={draft}
-                  rows={1}
-                  placeholder="Debata, peça mudanças…"
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault()
-                      send()
-                    }
-                  }}
-                />
-                <button className="csend" onClick={() => send()} disabled={!draft.trim() || chat.isPending}>
-                  <Icon name="send" size={17} />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ padding: 24, margin: "auto", textAlign: "center", maxWidth: 320 }}>
-              <div className="empty">
-                <div className="ic">
-                  <Icon name="sparkle" size={26} />
+                )
+              })}
+              {chat.isPending ? (
+                <div className="cmsg ai">
+                  <div className="cav">
+                    <Icon name="sparkle" size={14} />
+                  </div>
+                  <div className="cbubble">
+                    <div className="typing">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
                 </div>
-                <h3>Skill somente leitura</h3>
-                <p>Importe esta skill para as suas para poder editá-la e melhorá-la com IA.</p>
-                <Button variant="primary" icon="download" onClick={doImport} disabled={importar.isPending}>
-                  Importar para as minhas
-                </Button>
-              </div>
+              ) : null}
             </div>
-          )}
+
+            <div className="csuggest">
+              {SUGESTOES.map((s) => (
+                <button key={s} className="csug" onClick={() => send(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            <div className="composer">
+              <textarea
+                value={draft}
+                rows={1}
+                placeholder="Debata, peça mudanças…"
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    send()
+                  }
+                }}
+              />
+              <button className="csend" onClick={() => send()} disabled={!draft.trim() || chat.isPending}>
+                <Icon name="send" size={17} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* direita: conteúdo atual */}
         <div className="skill-pane">
           <div className="skill-pane-head">
             <Icon name="edit" size={15} style={{ color: "var(--muted)" }} />
             <span className="grow" style={{ fontWeight: 700 }}>
-              {editavel ? "Conteúdo da skill" : "Conteúdo (leitura)"}
+              SKILL.md
             </span>
-            {editavel && dirty ? <span className="t-meta">não salvo</span> : null}
+            {dirty ? <span className="t-meta">não salvo</span> : null}
           </div>
           <div className="skill-editor-area">
             <textarea
               value={conteudo}
-              readOnly={!editavel}
               spellCheck={false}
               onChange={(e) => {
                 setConteudo(e.target.value)

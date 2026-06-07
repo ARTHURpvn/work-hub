@@ -1,166 +1,149 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import type { SkillOrigem, SkillResumo } from "@/api/skills"
+import type { Skill } from "@/api/skills"
 import { Icon } from "@/components/ui/Icon"
 import { Modal } from "@/components/ui/Modal"
 import { Button, Empty, Field, TextInput } from "@/components/ui/kit"
 import { useSkillMutations, useSkills } from "@/hooks/useSkills"
+import { confirm } from "@/store/confirmStore"
 import { toast } from "@/store/toastStore"
 
-const SRC_META: Record<SkillOrigem, { label: string; cls: string }> = {
-  pessoal: { label: "Minha", cls: "tag-otavio" },
-  plugin: { label: "Plugin", cls: "tag-titan" },
-  desktop: { label: "Desktop", cls: "tag-free" },
+function templateSkill(name: string, displayTitle: string, description: string): string {
+  return `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${displayTitle || name}\n\nDescreva aqui o que esta skill faz e quando usá-la.\n`
 }
-
-type Filter = "all" | SkillOrigem
 
 export function Skills() {
   const navigate = useNavigate()
   const { data: skills, isLoading, isError } = useSkills()
-  const { create } = useSkillMutations()
+  const { create, migrar } = useSkillMutations()
 
-  const [filter, setFilter] = useState<Filter>("all")
   const [novoOpen, setNovoOpen] = useState(false)
-  const [slug, setSlug] = useState("")
   const [name, setName] = useState("")
+  const [displayTitle, setDisplayTitle] = useState("")
   const [description, setDescription] = useState("")
   const [erro, setErro] = useState("")
+  const [busca, setBusca] = useState("")
 
   const all = skills ?? []
-  const mine = all.filter((s) => s.origem === "pessoal")
-  const external = all.filter((s) => s.origem !== "pessoal")
-
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { pessoal: 0, plugin: 0, desktop: 0 }
-    for (const s of all) c[s.origem] = (c[s.origem] ?? 0) + 1
-    return c
-  }, [all])
-
-  const showMine = filter === "all" || filter === "pessoal"
-  const showExt = filter === "all" || filter === "plugin" || filter === "desktop"
-  const extList =
-    filter === "plugin"
-      ? external.filter((s) => s.origem === "plugin")
-      : filter === "desktop"
-        ? external.filter((s) => s.origem === "desktop")
-        : external
-
-  function abrir(s: SkillResumo) {
-    navigate(`/skills/${s.origem}/${s.slug}`)
-  }
+  const q = busca.trim().toLowerCase()
+  const visiveis = q
+    ? all.filter((s) =>
+        [s.display_title, s.name, s.descricao ?? ""].some((c) => c.toLowerCase().includes(q))
+      )
+    : all
 
   function handleCriar(e: React.FormEvent) {
     e.preventDefault()
     setErro("")
+    const slug = name.trim().toLowerCase()
+    if (!/^[a-z0-9-]{1,64}$/.test(slug)) {
+      setErro("Identificador: só minúsculas, números e hífens (máx. 64).")
+      return
+    }
+    if (!description.trim()) {
+      setErro("Descrição é obrigatória.")
+      return
+    }
     create.mutate(
-      { slug: slug.trim(), name: name.trim() || slug.trim(), description: description.trim() },
+      { display_title: displayTitle.trim() || slug, conteudo: templateSkill(slug, displayTitle.trim(), description.trim()) },
       {
         onSuccess: (skill) => {
           setNovoOpen(false)
-          setSlug("")
           setName("")
+          setDisplayTitle("")
           setDescription("")
-          toast.success("Skill criada")
-          navigate(`/skills/pessoal/${skill.slug}`)
+          toast.success("Skill criada na API")
+          navigate(`/skills/${skill.id}`)
         },
         onError: (e2) => setErro(e2 instanceof Error ? e2.message : "Erro ao criar"),
       }
     )
   }
 
-  const chips: { id: Filter; label: string }[] = [
-    { id: "all", label: "Todas" },
-    { id: "pessoal", label: `Minhas ${counts.pessoal}` },
-    { id: "plugin", label: `Plugins ${counts.plugin}` },
-    { id: "desktop", label: `Claude Desktop ${counts.desktop}` },
-  ]
+  async function handleMigrar() {
+    const ok = await confirm({
+      title: "Migrar skills locais?",
+      description: "As suas skills em ~/.claude/skills serão criadas como skills custom na API (pula as que já existem).",
+      confirmLabel: "Migrar",
+    })
+    if (!ok) return
+    migrar.mutate(undefined, {
+      onSuccess: (r) => {
+        const msg = `${r.criadas} criada(s), ${r.puladas} já existia(m)${r.erros.length ? `, ${r.erros.length} erro(s)` : ""}`
+        if (r.erros.length) toast.error("Migração com avisos", msg)
+        else toast.success("Migração concluída", msg)
+      },
+      onError: (e) => toast.error("Erro ao migrar", e instanceof Error ? e.message : undefined),
+    })
+  }
 
   return (
     <div className="page">
       <div className="page-head">
         <div>
-          <h1 className="t-display">Skills do Claude</h1>
-          <div className="sub">Selecione uma skill para ver o conteúdo e melhorar com IA</div>
+          <h1 className="t-display">Minhas Skills</h1>
+          <div className="sub">Skills custom no seu workspace da Anthropic (Skill Management API)</div>
         </div>
-        <Button variant="primary" icon="plus" onClick={() => setNovoOpen(true)}>
-          Nova skill
-        </Button>
+        <div className="row" style={{ gap: 8 }}>
+          <Button icon="download" onClick={handleMigrar} disabled={migrar.isPending}>
+            {migrar.isPending ? "Migrando…" : "Migrar locais"}
+          </Button>
+          <Button variant="primary" icon="plus" onClick={() => setNovoOpen(true)}>
+            Nova skill
+          </Button>
+        </div>
       </div>
 
       {isError && (
         <div className="card card-pad" style={{ borderColor: "var(--danger)", color: "var(--danger)" }}>
-          Erro ao carregar skills. Verifique se os diretórios estão montados.
+          Erro ao carregar skills.
         </div>
       )}
-
       {isLoading && <p className="muted">Carregando…</p>}
 
       {!isLoading && !isError && all.length === 0 && (
         <div className="card card-pad">
           <Empty
             icon="sparkle"
-            title="Nenhuma skill ainda"
+            title="Nenhuma skill na API ainda"
             action={
-              <Button variant="primary" icon="plus" onClick={() => setNovoOpen(true)}>
-                Criar primeira skill
-              </Button>
+              <div className="row" style={{ gap: 8, justifyContent: "center" }}>
+                <Button icon="download" onClick={handleMigrar} disabled={migrar.isPending}>
+                  Migrar locais
+                </Button>
+                <Button variant="primary" icon="plus" onClick={() => setNovoOpen(true)}>
+                  Criar skill
+                </Button>
+              </div>
             }
           >
-            Skills suas são editáveis e melhoráveis com IA. As externas (plugins, Claude Desktop) você importa para
-            editar.
+            Crie uma skill custom ou migre as suas skills locais (~/.claude/skills) para o workspace da API.
           </Empty>
         </div>
       )}
 
-      {!isLoading && !isError && all.length > 0 && (
+      {all.length > 0 && (
         <>
-          <div className="row wrap" style={{ gap: 8, marginBottom: 22 }}>
-            {chips.map((c) => (
-              <span key={c.id} className={"chip" + (filter === c.id ? " on" : "")} onClick={() => setFilter(c.id)}>
-                {c.label}
-              </span>
-            ))}
+          <div className="input-icon" style={{ maxWidth: 320, marginBottom: 18 }}>
+            <Icon name="search" />
+            <input
+              className="input"
+              value={busca}
+              placeholder="Pesquisar skill…"
+              onChange={(e) => setBusca(e.target.value)}
+            />
           </div>
 
-          {showMine && mine.length > 0 && (
-            <div style={{ marginBottom: 26 }}>
-              <div className="t-label" style={{ marginBottom: 12 }}>
-                Minhas — editáveis
-              </div>
-              <div className="grid g-3">
-                {mine.map((s) => (
-                  <SkillCard key={`${s.origem}:${s.slug}`} s={s} onOpen={() => abrir(s)} />
-                ))}
-              </div>
+          {visiveis.length > 0 ? (
+            <div className="grid g-3">
+              {visiveis.map((s) => (
+                <SkillCard key={s.id} s={s} onOpen={() => navigate(`/skills/${s.id}`)} />
+              ))}
             </div>
-          )}
-
-          {showExt && extList.length > 0 && (
-            <div>
-              <div className="t-label" style={{ marginBottom: 12 }}>
-                Externas — leitura + importar
-              </div>
-              <div className="grid g-3">
-                {extList.map((s) => (
-                  <SkillCard key={`${s.origem}:${s.slug}`} s={s} onOpen={() => abrir(s)} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {filter === "pessoal" && mine.length === 0 && (
+          ) : (
             <div className="card card-pad">
-              <Empty
-                icon="sparkle"
-                title="Você ainda não tem skills próprias"
-                action={
-                  <Button variant="primary" icon="plus" onClick={() => setNovoOpen(true)}>
-                    Criar skill
-                  </Button>
-                }
-              >
-                Crie do zero ou importe uma skill externa.
+              <Empty icon="search" title="Nenhuma skill encontrada">
+                Nada corresponde a “{busca}”.
               </Empty>
             </div>
           )}
@@ -169,14 +152,14 @@ export function Skills() {
 
       <Modal open={novoOpen} onClose={() => setNovoOpen(false)} title="Nova skill">
         <form onSubmit={handleCriar} className="stack" style={{ gap: 0 }}>
-          <Field label="Identificador (pasta) *" hint="Só letras, números, '-' e '_'.">
-            <TextInput value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="minha-skill" autoFocus required />
+          <Field label="Identificador (name) *" hint="Só minúsculas, números e hífens. Vai no frontmatter da skill.">
+            <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="minha-skill" autoFocus required />
           </Field>
-          <Field label="Nome">
-            <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Minha Skill" />
+          <Field label="Título de exibição">
+            <TextInput value={displayTitle} onChange={(e) => setDisplayTitle(e.target.value)} placeholder="Minha Skill" />
           </Field>
-          <Field label="Descrição (quando usar)">
-            <TextInput value={description} onChange={(e) => setDescription(e.target.value)} />
+          <Field label="Descrição (quando usar) *">
+            <TextInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Use quando…" />
           </Field>
           {erro && <p style={{ color: "var(--danger)", fontSize: 13 }}>{erro}</p>}
           <div className="row" style={{ gap: 8 }}>
@@ -193,35 +176,25 @@ export function Skills() {
   )
 }
 
-function SkillCard({ s, onOpen }: { s: SkillResumo; onOpen: () => void }) {
-  const meta = SRC_META[s.origem]
-  const mine = s.origem === "pessoal"
+function SkillCard({ s, onOpen }: { s: Skill; onOpen: () => void }) {
   return (
     <div className="card card-pad card-hover" onClick={onOpen}>
       <div className="spread" style={{ marginBottom: 10 }}>
-        <div className="row" style={{ gap: 9 }}>
+        <div className="row" style={{ gap: 9, minWidth: 0 }}>
           <div
             className="avatar"
             style={{ borderRadius: 9, background: "var(--accent-weak)", color: "var(--accent)", border: "none" }}
           >
             <Icon name="sparkle" size={15} />
           </div>
-          <span className={"tag " + meta.cls}>
-            <span className="dot" />
-            {meta.label}
+          <span className="truncate" style={{ fontWeight: 700 }}>
+            {s.display_title || s.name}
           </span>
         </div>
-        {mine ? (
-          <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--accent)" }}>
-            <Icon name="sparkle" size={13} /> IA
-          </span>
-        ) : (
-          <span className="t-meta">somente leitura</span>
-        )}
+        <span className="tag tag-otavio">
+          <span className="dot" /> custom
+        </span>
       </div>
-      <h3 className="t-h2" style={{ marginBottom: 5 }}>
-        {s.name || "(sem nome)"}
-      </h3>
       <p
         className="muted"
         style={{
@@ -234,11 +207,13 @@ function SkillCard({ s, onOpen }: { s: SkillResumo; onOpen: () => void }) {
           overflow: "hidden",
         }}
       >
-        {s.description || "Sem descrição."}
+        {s.descricao || "Sem descrição."}
       </p>
-      <div className="row" style={{ gap: 6, color: "var(--text-2)", fontWeight: 600, fontSize: 13 }}>
-        <span>{mine ? "Abrir e melhorar" : "Abrir"}</span>
-        <Icon name="chevron_r" size={15} />
+      <div className="spread">
+        <span className="t-meta mono truncate">{s.name}</span>
+        <span className="row" style={{ gap: 6, color: "var(--text-2)", fontWeight: 600, fontSize: 13 }}>
+          Abrir <Icon name="chevron_r" size={15} />
+        </span>
       </div>
     </div>
   )

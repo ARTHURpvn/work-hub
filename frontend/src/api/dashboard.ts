@@ -1,3 +1,4 @@
+import { onUnauthorized } from "@/lib/session"
 import type { VpsComProjetos } from "./vps"
 
 export interface ProjetosResumo {
@@ -62,6 +63,7 @@ export interface DashboardSummary {
 async function request<T>(path: string): Promise<T> {
   const res = await fetch(`/api/v1${path}`, { credentials: "include" })
   if (!res.ok) {
+    if (res.status === 401) onUnauthorized()
     const data = await res.json().catch(() => ({}))
     throw new Error(data?.detail ?? `Erro ${res.status}`)
   }

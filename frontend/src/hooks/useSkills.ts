@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { skillsApi, type ChatMensagem, type SkillOrigem } from "@/api/skills"
+import { skillsApi, type ChatMensagem } from "@/api/skills"
 
 const KEY = ["skills"] as const
 
@@ -12,28 +12,24 @@ export function useSkillMutations() {
   const inval = () => qc.invalidateQueries({ queryKey: KEY })
   return {
     create: useMutation({
-      mutationFn: (body: { slug: string; name: string; description: string }) => skillsApi.create(body),
+      mutationFn: (body: { display_title: string; conteudo: string }) => skillsApi.create(body),
       onSuccess: inval,
     }),
     update: useMutation({
-      mutationFn: ({ slug, conteudo }: { slug: string; conteudo: string }) => skillsApi.update(slug, conteudo),
+      mutationFn: ({ id, conteudo, display_title }: { id: string; conteudo: string; display_title?: string }) =>
+        skillsApi.update(id, { conteudo, display_title }),
       onSuccess: inval,
     }),
     remove: useMutation({
-      mutationFn: (slug: string) => skillsApi.remove(slug),
+      mutationFn: (id: string) => skillsApi.remove(id),
       onSuccess: inval,
     }),
-    melhorar: useMutation({
-      mutationFn: (slug: string) => skillsApi.melhorar(slug),
+    migrar: useMutation({
+      mutationFn: () => skillsApi.migrar(),
+      onSuccess: inval,
     }),
     chat: useMutation({
-      mutationFn: ({ slug, mensagens }: { slug: string; mensagens: ChatMensagem[] }) =>
-        skillsApi.chat(slug, mensagens),
-    }),
-    importar: useMutation({
-      mutationFn: ({ origem, slug }: { origem: SkillOrigem; slug: string }) =>
-        skillsApi.importar(origem, slug),
-      onSuccess: inval,
+      mutationFn: ({ id, mensagens }: { id: string; mensagens: ChatMensagem[] }) => skillsApi.chat(id, mensagens),
     }),
   }
 }

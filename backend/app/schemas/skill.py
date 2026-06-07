@@ -1,7 +1,10 @@
 import re
+import uuid
+from datetime import datetime
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
+# Mantido para o skill_service local (fonte da migração).
 SLUG_RE = re.compile(r"^[a-zA-Z0-9_-]{1,80}$")
 
 
@@ -12,37 +15,47 @@ def validar_slug(v: str) -> str:
     return v
 
 
-class SkillResumo(BaseModel):
-    slug: str
-    name: str
-    description: str | None
-    origem: str  # pessoal | plugin | desktop
-    editavel: bool
-
-
+# ---------- Skills custom (Anthropic Skill Management API) ----------
 class SkillResponse(BaseModel):
-    slug: str
+    id: uuid.UUID
+    skill_id: str
     name: str
-    description: str | None
-    origem: str
-    editavel: bool
-    conteudo: str  # SKILL.md completo
+    display_title: str
+    descricao: str | None
+    versao_atual: str | None
+    atualizado_em: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SkillDetalhe(SkillResponse):
+    conteudo: str
 
 
 class SkillCreate(BaseModel):
-    slug: str
-    name: str
-    description: str = ""
-
-    _check = field_validator("slug")(validar_slug)
+    display_title: str
+    conteudo: str  # SKILL.md completo (com frontmatter name/description)
 
 
 class SkillUpdate(BaseModel):
-    conteudo: str  # SKILL.md completo
+    conteudo: str
+    display_title: str | None = None
 
 
+class MigrarErro(BaseModel):
+    name: str
+    erro: str
+
+
+class MigrarResultado(BaseModel):
+    criadas: int
+    puladas: int
+    erros: list[MigrarErro]
+
+
+# ---------- Chat / melhorar (Messages API sobre o conteúdo) ----------
 class SkillMelhoria(BaseModel):
-    sugestao: str  # SKILL.md melhorado (não salvo automaticamente)
+    sugestao: str
 
 
 class ChatMensagem(BaseModel):

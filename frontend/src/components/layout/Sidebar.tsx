@@ -74,19 +74,25 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           )
         })}
 
+        <NavLink
+          to="/rotinas"
+          onClick={onNavigate}
+          className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
+        >
+          <Icon name="clock" />
+          <span>Rotinas</span>
+        </NavLink>
+
         <div className="nav-sep" />
         <div className="nav-item disabled">
           <Icon name="bot" />
           <span>Agentes</span>
         </div>
-        <div className="nav-item disabled">
-          <Icon name="clock" />
-          <span>Jobs</span>
-        </div>
       </nav>
 
       <div className="nav-foot">
         <div className="nav-sep" />
+
         <NavLink
           to="/configuracoes"
           onClick={onNavigate}

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     skills_dir: str = "/skills"
     plugins_dir: str = "/plugins"
     desktop_skills_dir: str = "/desktop-skills"
+    claude_stats_path: str = "/claude-stats.json"
 
     @property
     def is_development(self) -> bool:

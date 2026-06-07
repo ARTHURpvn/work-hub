@@ -219,10 +219,19 @@ async def chat(conteudo: str, mensagens: list[dict], api_key: str = "", model: s
     except (json.JSONDecodeError, ValueError):
         pass
 
-    return {"reply": reply, "sugestao_conteudo": sugestao}
+    return {"reply": reply, "sugestao_conteudo": sugestao, "usage": _usage(msg, model)}
 
 
-async def melhorar(conteudo: str, api_key: str = "", model: str = "") -> str:
+def _usage(msg, model: str) -> dict:
+    u = getattr(msg, "usage", None)
+    return {
+        "input_tokens": getattr(u, "input_tokens", 0) or 0,
+        "output_tokens": getattr(u, "output_tokens", 0) or 0,
+        "model": model,
+    }
+
+
+async def melhorar(conteudo: str, api_key: str = "", model: str = "") -> dict:
     api_key = api_key or settings.anthropic_api_key
     model = model or settings.anthropic_model
     if not api_key:
@@ -243,4 +252,5 @@ async def melhorar(conteudo: str, api_key: str = "", model: str = "") -> str:
         max_tokens=4000,
         messages=[{"role": "user", "content": prompt}],
     )
-    return "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
+    sugestao = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
+    return {"sugestao": sugestao, "usage": _usage(msg, model)}
