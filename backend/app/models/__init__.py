@@ -6,6 +6,8 @@ from app.models.linkedin import LinkedinPost, PromptTemplate
 from app.models.projeto import Projeto, ProjetoMembro
 from app.models.rotina import Rotina, UsoIA
 from app.models.skill import SkillRef
+from app.models.skill_arquivo import SkillArquivo
+from app.models.skill_chat import SkillChat
 from app.models.skill_remota import SkillRemota
 from app.models.subtarefa import Subtarefa, TarefaLink
 from app.models.tarefa import Tarefa
@@ -29,6 +31,8 @@ __all__ = [
     "JobLog",
     "SkillRef",
     "SkillRemota",
+    "SkillArquivo",
+    "SkillChat",
     "IntegracaoCalendario",
     "SyncLog",
     "PromptTemplate",

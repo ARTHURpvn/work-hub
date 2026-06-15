@@ -6,18 +6,27 @@ em modo headless. Devolve os mesmos formatos de `skill_service.chat`/`melhorar`.
 import asyncio
 import json
 import os
+import time
+from typing import AsyncIterator
 
 _USAGE_CC = {"input_tokens": 0, "output_tokens": 0, "model": "claude-code"}
 
+# Sem atividade (nenhuma linha nova) por este tempo => aborta. Substitui o corte
+# fixo: gerações longas mas ativas continuam; só travamentos reais são mortos.
+_INATIVIDADE_S = 300
 
-async def _run(token: str, prompt: str) -> str:
-    env = {
+
+def _env(token: str) -> dict:
+    return {
         **os.environ,
         "CLAUDE_CODE_OAUTH_TOKEN": token,
         "HOME": "/tmp",
         "CLAUDE_CONFIG_DIR": "/tmp/claude-cfg",
         "IS_SANDBOX": "1",
     }
+
+
+async def _run(token: str, prompt: str) -> str:
     try:
         proc = await asyncio.create_subprocess_exec(
             "claude",
@@ -27,7 +36,7 @@ async def _run(token: str, prompt: str) -> str:
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env=env,
+            env=_env(token),
         )
     except FileNotFoundError:
         raise ValueError("CLI do Claude Code não encontrado na imagem.")
@@ -44,6 +53,114 @@ async def _run(token: str, prompt: str) -> str:
     return out.decode("utf-8", "ignore").strip()
 
 
+async def gerar(token: str, prompt: str) -> str:
+    """Gera texto puro pela assinatura (uso genérico).
+
+    Usa o runner em streaming (timeout por inatividade) para não estourar em
+    gerações longas, como o refactor multi-arquivo.
+    """
+    texto = ""
+    async for ev in gerar_stream(token, prompt):
+        if ev["type"] == "final":
+            texto = ev["texto"]
+    return texto
+
+
+async def gerar_stream(token: str, prompt: str) -> AsyncIterator[dict]:
+    """Roda o CLI em modo stream-json e emite progresso em tempo real.
+
+    Yields:
+        {"type": "status", "fase": str, "elapsed": float, "chars": int}
+        {"type": "final", "texto": str}
+
+    O timeout é por INATIVIDADE: se nenhuma linha nova chegar em _INATIVIDADE_S,
+    o processo é morto. Assim, uma geração longa porém ativa não é cortada.
+    """
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "claude",
+            "-p",
+            "--output-format",
+            "stream-json",
+            "--include-partial-messages",
+            "--verbose",
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=_env(token),
+            # O evento `result` traz o texto final inteiro numa única linha; sobe
+            # o limite do readline (padrão 64 KB) p/ caber várias SKILL.md.
+            limit=8 * 1024 * 1024,
+        )
+    except FileNotFoundError:
+        raise ValueError("CLI do Claude Code não encontrado na imagem.")
+
+    assert proc.stdin and proc.stdout and proc.stderr
+    proc.stdin.write(prompt.encode("utf-8"))
+    await proc.stdin.drain()
+    proc.stdin.close()
+
+    inicio = time.monotonic()
+    chars = 0
+    ultimo_emit = 0.0
+    final_texto: str | None = None
+    erro_result: str | None = None
+    partes: list[str] = []
+
+    yield {"type": "status", "fase": "conectando", "elapsed": 0.0, "chars": 0}
+
+    try:
+        while True:
+            try:
+                linha = await asyncio.wait_for(proc.stdout.readline(), timeout=_INATIVIDADE_S)
+            except asyncio.TimeoutError:
+                proc.kill()
+                raise ValueError("Claude Code ficou sem responder (inatividade).")
+            if not linha:
+                break
+
+            try:
+                ev = json.loads(linha.decode("utf-8", "ignore"))
+            except json.JSONDecodeError:
+                continue
+
+            tipo = ev.get("type")
+            agora = time.monotonic()
+            elapsed = round(agora - inicio, 1)
+
+            if tipo == "system":
+                yield {"type": "status", "fase": "pensando", "elapsed": elapsed, "chars": chars}
+            elif tipo == "stream_event":
+                bloco = (ev.get("event") or {}).get("delta") or {}
+                texto = bloco.get("text") or ""
+                if texto:
+                    chars += len(texto)
+                    if agora - ultimo_emit > 0.5:
+                        ultimo_emit = agora
+                        yield {"type": "status", "fase": "gerando", "elapsed": elapsed, "chars": chars}
+            elif tipo == "assistant":
+                for b in (ev.get("message") or {}).get("content") or []:
+                    if isinstance(b, dict) and b.get("type") == "text" and b.get("text"):
+                        partes.append(b["text"])
+            elif tipo == "result":
+                final_texto = ev.get("result") if isinstance(ev.get("result"), str) else None
+                if ev.get("is_error") or ev.get("subtype") not in (None, "success"):
+                    erro_result = str(ev.get("result") or ev.get("subtype") or "erro") [:400]
+
+        await proc.wait()
+        if (proc.returncode and proc.returncode != 0) or erro_result:
+            err = erro_result or (await proc.stderr.read()).decode("utf-8", "ignore").strip()[:400]
+            raise ValueError(f"Claude Code falhou: {err or 'verifique o token (claude setup-token)'}")
+    finally:
+        if proc.returncode is None:
+            proc.kill()
+
+    texto = (final_texto if final_texto is not None else "".join(partes)).strip()
+    if not texto:
+        raise ValueError("Claude Code não retornou conteúdo.")
+    yield {"type": "final", "texto": texto}
+
+
 async def melhorar(token: str, conteudo: str) -> dict:
     prompt = (
         "Você é especialista em Claude Code Skills. Aprimore o arquivo SKILL.md abaixo: "
@@ -51,37 +168,14 @@ async def melhorar(token: str, conteudo: str) -> dict:
         "organize as instruções e mantenha o frontmatter válido (name e description). "
         "Responda APENAS com o arquivo SKILL.md completo, sem comentários.\n\n" + conteudo
     )
-    sugestao = await _run(token, prompt)
+    sugestao = await gerar(token, prompt)
     return {"sugestao": sugestao, "usage": dict(_USAGE_CC)}
 
 
-async def chat(token: str, conteudo: str, mensagens: list[dict]) -> dict:
-    conversa = "\n".join(
-        f"{'Assistente' if m.get('role') == 'assistant' else 'Usuário'}: {m.get('content', '')}"
-        for m in mensagens
-        if m.get("content")
-    )
-    prompt = (
-        "Você é um especialista em Claude Code Skills ajudando a melhorar um arquivo SKILL.md. "
-        "Responda em português, direto e técnico. "
-        "Responda APENAS com um objeto JSON válido no formato:\n"
-        '{"reply": "<resposta conversacional>", "sugestao_conteudo": "<SKILL.md completo revisado ou null>"}\n'
-        "Use sugestao_conteudo (string com o SKILL.md inteiro) só quando propuser mudança concreta; "
-        "caso contrário, null. Mantenha o frontmatter YAML válido.\n\n"
-        "SKILL.md atual:\n```\n" + conteudo + "\n```\n\n"
-        "Conversa até agora:\n" + conversa
-    )
-    texto = await _run(token, prompt)
+async def chat(token: str, conteudo: str, mensagens: list[dict], arquivos: list[dict] | None = None) -> dict:
+    from app.services import skill_prompt, skill_service
 
-    reply, sugestao = texto, None
-    try:
-        ini, fim = texto.find("{"), texto.rfind("}")
-        if ini != -1 and fim != -1:
-            dados = json.loads(texto[ini : fim + 1])
-            reply = str(dados.get("reply") or "").strip() or texto
-            sug = dados.get("sugestao_conteudo")
-            sugestao = sug if isinstance(sug, str) and sug.strip() else None
-    except (json.JSONDecodeError, ValueError):
-        pass
-
-    return {"reply": reply, "sugestao_conteudo": sugestao, "usage": dict(_USAGE_CC)}
+    texto = await gerar(token, skill_prompt.cli_prompt(conteudo, mensagens, arquivos))
+    resultado = skill_service._parse_resposta(texto)  # noqa: SLF001
+    resultado["usage"] = dict(_USAGE_CC)
+    return resultado

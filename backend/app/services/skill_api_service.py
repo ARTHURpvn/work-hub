@@ -70,10 +70,11 @@ def _erro_amigavel(exc: Exception) -> Exception:
     return exc
 
 
-def _bundle_dir(base: str, conteudo: str) -> str:
-    """Cria <base>/<name>/SKILL.md e devolve o caminho da pasta nomeada.
+def _bundle_dir(base: str, conteudo: str, arquivos: list[dict] | None = None) -> str:
+    """Cria <base>/<name>/ com SKILL.md + arquivos auxiliares; devolve a pasta nomeada.
 
     A API exige que o nome da pasta do bundle seja igual ao `name` do frontmatter.
+    Os auxiliares vão em subcaminhos relativos (ex.: 'reference/srs.md').
     """
     name, _ = _parse_frontmatter(conteudo)
     if not name:
@@ -81,15 +82,26 @@ def _bundle_dir(base: str, conteudo: str) -> str:
     pasta = Path(base) / name
     pasta.mkdir(parents=True, exist_ok=True)
     (pasta / "SKILL.md").write_text(conteudo, encoding="utf-8")
+    for a in arquivos or []:
+        caminho = (a.get("caminho") or "").strip()
+        conteudo_aux = a.get("conteudo")
+        if not caminho or not isinstance(conteudo_aux, str):
+            continue
+        alvo = (pasta / caminho).resolve()
+        # proteção contra path traversal: o arquivo deve ficar dentro da pasta
+        if not str(alvo).startswith(str(pasta.resolve()) + "/"):
+            continue
+        alvo.parent.mkdir(parents=True, exist_ok=True)
+        alvo.write_text(conteudo_aux, encoding="utf-8")
     return str(pasta)
 
 
-def _sync_criar(api_key: str, display_title: str, conteudo: str) -> dict:
+def _sync_criar(api_key: str, display_title: str, conteudo: str, arquivos: list[dict] | None) -> dict:
     from anthropic.lib import files_from_dir
 
     client = _client(api_key)
     with tempfile.TemporaryDirectory() as d:
-        files = files_from_dir(_bundle_dir(d, conteudo))
+        files = files_from_dir(_bundle_dir(d, conteudo, arquivos))
         try:
             resp = client.beta.skills.create(display_title=display_title, files=files, betas=[BETA])
         except Exception as exc:  # noqa: BLE001
@@ -97,12 +109,12 @@ def _sync_criar(api_key: str, display_title: str, conteudo: str) -> dict:
     return {"skill_id": resp.id, "version": _versao_str(resp.latest_version)}
 
 
-def _sync_nova_versao(api_key: str, skill_id: str, conteudo: str) -> str:
+def _sync_nova_versao(api_key: str, skill_id: str, conteudo: str, arquivos: list[dict] | None) -> str:
     from anthropic.lib import files_from_dir
 
     client = _client(api_key)
     with tempfile.TemporaryDirectory() as d:
-        files = files_from_dir(_bundle_dir(d, conteudo))
+        files = files_from_dir(_bundle_dir(d, conteudo, arquivos))
         try:
             resp = client.beta.skills.versions.create(skill_id=skill_id, files=files, betas=[BETA])
         except Exception as exc:  # noqa: BLE001
@@ -123,12 +135,16 @@ def _sync_excluir(api_key: str, skill_id: str) -> None:
         raise _erro_amigavel(exc)
 
 
-async def criar(api_key: str, display_title: str, conteudo: str) -> dict:
-    return await asyncio.to_thread(_sync_criar, api_key, display_title, conteudo)
+async def criar(
+    api_key: str, display_title: str, conteudo: str, arquivos: list[dict] | None = None
+) -> dict:
+    return await asyncio.to_thread(_sync_criar, api_key, display_title, conteudo, arquivos)
 
 
-async def nova_versao(api_key: str, skill_id: str, conteudo: str) -> str:
-    return await asyncio.to_thread(_sync_nova_versao, api_key, skill_id, conteudo)
+async def nova_versao(
+    api_key: str, skill_id: str, conteudo: str, arquivos: list[dict] | None = None
+) -> str:
+    return await asyncio.to_thread(_sync_nova_versao, api_key, skill_id, conteudo, arquivos)
 
 
 async def excluir_remota(api_key: str, skill_id: str) -> None:
