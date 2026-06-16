@@ -15,6 +15,7 @@ class PluginResponse(BaseModel):
     subagent_ids: list[uuid.UUID] = []
     mcp_ids: list[uuid.UUID] = []
     hook_ids: list[uuid.UUID] = []
+    command_ids: list[uuid.UUID] = []
 
     model_config = {"from_attributes": True}
 
@@ -28,6 +29,7 @@ class PluginCreate(BaseModel):
     subagent_ids: list[uuid.UUID] = []
     mcp_ids: list[uuid.UUID] = []
     hook_ids: list[uuid.UUID] = []
+    command_ids: list[uuid.UUID] = []
 
 
 class PluginUpdate(BaseModel):
@@ -38,3 +40,4 @@ class PluginUpdate(BaseModel):
     subagent_ids: list[uuid.UUID] | None = None
     mcp_ids: list[uuid.UUID] | None = None
     hook_ids: list[uuid.UUID] | None = None
+    command_ids: list[uuid.UUID] | None = None

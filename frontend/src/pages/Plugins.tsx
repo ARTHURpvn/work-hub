@@ -4,6 +4,7 @@ import { Icon } from "@/components/ui/Icon"
 import { Modal } from "@/components/ui/Modal"
 import { Button, Check, Empty, Field, TextInput } from "@/components/ui/kit"
 import { usePluginMutations, usePlugins } from "@/hooks/usePlugins"
+import { useCommands } from "@/hooks/useCommands"
 import { useHooks } from "@/hooks/useHooks"
 import { useMcpServers } from "@/hooks/useMcpServers"
 import { useSkills } from "@/hooks/useSkills"
@@ -17,6 +18,7 @@ export function Plugins() {
   const { data: subagents } = useSubagents()
   const { data: mcps } = useMcpServers()
   const { data: hooks } = useHooks()
+  const { data: commands } = useCommands()
   const { create, update, remove, exportar } = usePluginMutations()
 
   const [editor, setEditor] = useState<Plugin | "novo" | null>(null)
@@ -111,7 +113,7 @@ export function Plugins() {
               </p>
               <div className="spread">
                 <span className="t-meta mono truncate">
-                  {p.name} · {p.skill_ids.length} skill · {p.subagent_ids.length} subagent · {p.mcp_ids.length} MCP · {p.hook_ids.length} hook
+                  {p.name} · {p.skill_ids.length}sk · {p.subagent_ids.length}sa · {p.mcp_ids.length}mcp · {p.hook_ids.length}hk · {p.command_ids.length}cmd
                 </span>
               </div>
               <div className="row" style={{ gap: 8, marginTop: 12 }}>
@@ -120,8 +122,8 @@ export function Plugins() {
                   variant="primary"
                   icon="download"
                   onClick={() => exportarPlugin(p)}
-                  disabled={exportar.isPending || (p.skill_ids.length === 0 && p.subagent_ids.length === 0 && p.mcp_ids.length === 0 && p.hook_ids.length === 0)}
-                  title={p.skill_ids.length === 0 && p.subagent_ids.length === 0 && p.mcp_ids.length === 0 && p.hook_ids.length === 0 ? "Adicione conteúdo primeiro" : undefined}
+                  disabled={exportar.isPending || (p.skill_ids.length === 0 && p.subagent_ids.length === 0 && p.mcp_ids.length === 0 && p.hook_ids.length === 0 && p.command_ids.length === 0)}
+                  title={p.skill_ids.length === 0 && p.subagent_ids.length === 0 && p.mcp_ids.length === 0 && p.hook_ids.length === 0 && p.command_ids.length === 0 ? "Adicione conteúdo primeiro" : undefined}
                 >
                   Exportar
                 </Button>
@@ -142,6 +144,7 @@ export function Plugins() {
           subagents={(subagents ?? []).map((s) => ({ id: s.id, label: s.name }))}
           mcps={(mcps ?? []).map((m) => ({ id: m.id, label: m.name }))}
           hooks={(hooks ?? []).map((h) => ({ id: h.id, label: `${h.event}${h.matcher ? " · " + h.matcher : ""}` }))}
+          commands={(commands ?? []).map((c) => ({ id: c.id, label: `/${c.name}` }))}
           saving={create.isPending || update.isPending}
           onClose={() => setEditor(null)}
           onSave={(body) => {
@@ -178,6 +181,7 @@ function PluginEditor({
   subagents,
   mcps,
   hooks,
+  commands,
   saving,
   onClose,
   onSave,
@@ -187,6 +191,7 @@ function PluginEditor({
   subagents: { id: string; label: string }[]
   mcps: { id: string; label: string }[]
   hooks: { id: string; label: string }[]
+  commands: { id: string; label: string }[]
   saving: boolean
   onClose: () => void
   onSave: (body: {
@@ -198,6 +203,7 @@ function PluginEditor({
     subagent_ids: string[]
     mcp_ids: string[]
     hook_ids: string[]
+    command_ids: string[]
   }) => void
 }) {
   const [name, setName] = useState(plugin?.name ?? "")
@@ -208,9 +214,10 @@ function PluginEditor({
   const [selSub, setSelSub] = useState<Set<string>>(new Set(plugin?.subagent_ids ?? []))
   const [selMcp, setSelMcp] = useState<Set<string>>(new Set(plugin?.mcp_ids ?? []))
   const [selHook, setSelHook] = useState<Set<string>>(new Set(plugin?.hook_ids ?? []))
+  const [selCmd, setSelCmd] = useState<Set<string>>(new Set(plugin?.command_ids ?? []))
   const [erro, setErro] = useState("")
 
-  useEffect(() => setErro(""), [name, displayTitle, version, sel, selSub, selMcp, selHook])
+  useEffect(() => setErro(""), [name, displayTitle, version, sel, selSub, selMcp, selHook, selCmd])
 
   function toggle(id: string) {
     setSel((s) => {
@@ -244,6 +251,14 @@ function PluginEditor({
     })
   }
 
+  function toggleCmd(id: string) {
+    setSelCmd((s) => {
+      const n = new Set(s)
+      n.has(id) ? n.delete(id) : n.add(id)
+      return n
+    })
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!plugin) {
@@ -253,8 +268,8 @@ function PluginEditor({
         return
       }
     }
-    if (sel.size === 0 && selSub.size === 0 && selMcp.size === 0 && selHook.size === 0) {
-      setErro("Selecione ao menos uma skill, subagent, MCP ou hook.")
+    if (sel.size === 0 && selSub.size === 0 && selMcp.size === 0 && selHook.size === 0 && selCmd.size === 0) {
+      setErro("Selecione ao menos uma skill, subagent, MCP, hook ou command.")
       return
     }
     onSave({
@@ -266,6 +281,7 @@ function PluginEditor({
       subagent_ids: [...selSub],
       mcp_ids: [...selMcp],
       hook_ids: [...selHook],
+      command_ids: [...selCmd],
     })
   }
 
@@ -354,6 +370,23 @@ function PluginEditor({
               >
                 <Check on={selHook.has(h.id)} onClick={() => toggleHook(h.id)} />
                 <span className="truncate mono" style={{ fontSize: 12.5 }}>{h.label}</span>
+              </div>
+            ))}
+          </div>
+        </Field>
+
+        <Field label={`Commands (${selCmd.size} selecionado(s))`}>
+          <div className="card" style={{ maxHeight: 180, overflow: "auto", padding: 6 }}>
+            {commands.length === 0 && <p className="muted" style={{ padding: 8, margin: 0 }}>Nenhum command disponível.</p>}
+            {commands.map((c) => (
+              <div
+                key={c.id}
+                className="lrow click"
+                style={{ padding: "7px 8px", gap: 10 }}
+                onClick={() => toggleCmd(c.id)}
+              >
+                <Check on={selCmd.has(c.id)} onClick={() => toggleCmd(c.id)} />
+                <span className="truncate mono" style={{ fontSize: 12.5 }}>{c.label}</span>
               </div>
             ))}
           </div>

@@ -53,8 +53,9 @@ def _montar_arvore(
     subagents: list[dict] | None = None,
     mcps: list[dict] | None = None,
     hooks_json: dict | None = None,
+    commands: list[dict] | None = None,
 ) -> Path:
-    """Escreve a árvore marketplace→plugin→(skills+agents+.mcp.json+hooks) e devolve a pasta."""
+    """Escreve a árvore marketplace→plugin→(skills+agents+.mcp.json+hooks+commands)."""
     name = plugin["name"]
     mkt = raiz / f"{name}-marketplace"
     plugin_dir = mkt / "plugins" / name
@@ -128,6 +129,18 @@ def _montar_arvore(
             json.dumps(hooks_json, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
+    # slash commands: commands/<name>.md
+    if commands:
+        from app.services import command_service
+
+        for c in commands:
+            (plugin_dir / "commands").mkdir(parents=True, exist_ok=True)
+            md = command_service.montar_md(
+                c.get("descricao"), c.get("argument_hint"), c.get("model"),
+                c.get("allowed_tools"), c["conteudo"],
+            )
+            (plugin_dir / "commands" / f"{c['name']}.md").write_text(md, encoding="utf-8")
+
     # README de instalação
     (mkt / "README.md").write_text(
         f"# {plugin.get('display_title') or name}\n\n"
@@ -180,14 +193,15 @@ def montar_zip(
     subagents: list[dict] | None = None,
     mcps: list[dict] | None = None,
     hooks_json: dict | None = None,
+    commands: list[dict] | None = None,
 ) -> tuple[bytes, list[str]]:
-    """Gera o .zip do marketplace+plugin (skills+subagents+.mcp.json+hooks). Devolve (bytes, avisos)."""
+    """Gera o .zip do marketplace+plugin (skills+subagents+mcp+hooks+commands)."""
     validar_name(plugin["name"])
     tem_hooks = bool(hooks_json and hooks_json.get("hooks"))
-    if not skills and not subagents and not mcps and not tem_hooks:
-        raise ValueError("O plugin precisa de pelo menos uma skill, subagent, MCP ou hook.")
+    if not skills and not subagents and not mcps and not tem_hooks and not commands:
+        raise ValueError("O plugin precisa de pelo menos uma skill, subagent, MCP, hook ou command.")
     with tempfile.TemporaryDirectory() as d:
         raiz = Path(d)
-        plugin_dir = _montar_arvore(raiz, plugin, skills, subagents, mcps, hooks_json)
+        plugin_dir = _montar_arvore(raiz, plugin, skills, subagents, mcps, hooks_json, commands)
         avisos = _validar_cli(plugin_dir)
         return _zipar(raiz), avisos

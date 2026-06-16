@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { Calendario } from "@/pages/Calendario"
+import { Commands } from "@/pages/Commands"
 import { Configuracoes } from "@/pages/Configuracoes"
 import { Dashboard } from "@/pages/Dashboard"
 import { Hooks } from "@/pages/Hooks"
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="subagents" element={<Subagents />} />
         <Route path="mcp" element={<McpServers />} />
         <Route path="hooks" element={<Hooks />} />
+        <Route path="commands" element={<Commands />} />
         <Route path="plugins" element={<Plugins />} />
         <Route path="rotinas" element={<Rotinas />} />
         <Route path="configuracoes" element={<Configuracoes />} />

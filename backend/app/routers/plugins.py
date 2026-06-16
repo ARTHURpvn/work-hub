@@ -8,6 +8,7 @@ from app.database import get_session
 from app.deps import get_current_user
 from app.schemas.plugin import PluginCreate, PluginResponse, PluginUpdate
 from app.services import (
+    command_service,
     hook_service,
     mcp_service,
     plugin_export_service,
@@ -30,6 +31,7 @@ async def _resposta(session: AsyncSession, row) -> PluginResponse:
     out.subagent_ids = await plugin_service.subagent_ids(session, row.id)
     out.mcp_ids = await plugin_service.mcp_ids(session, row.id)
     out.hook_ids = await plugin_service.hook_ids(session, row.id)
+    out.command_ids = await plugin_service.command_ids(session, row.id)
     return out
 
 
@@ -64,6 +66,7 @@ async def create_plugin(
         sub_ids=body.subagent_ids,
         mcp_ids_=body.mcp_ids,
         hook_ids_=body.hook_ids,
+        cmd_ids_=body.command_ids,
     )
     return await _resposta(session, row)
 
@@ -97,6 +100,7 @@ async def update_plugin(
         sub_ids=body.subagent_ids,
         mcp_ids_=body.mcp_ids,
         hook_ids_=body.hook_ids,
+        cmd_ids_=body.command_ids,
         display_title=(body.display_title.strip() if body.display_title else None),
         descricao=body.descricao,
         version=(body.version.strip() if body.version else None),
@@ -168,6 +172,22 @@ async def export_plugin(
         hook_rows.append({"event": h.event, "matcher": h.matcher, "command": h.command, "timeout": h.timeout})
     hooks_json = hook_service.montar_hooks_json(hook_rows) if hook_rows else None
 
+    commands: list[dict] = []
+    for cid in await plugin_service.command_ids(session, pid):
+        c = await command_service.obter(session, cid)
+        if c is None:
+            continue
+        commands.append(
+            {
+                "name": c.name,
+                "descricao": c.descricao,
+                "argument_hint": c.argument_hint,
+                "model": c.model,
+                "allowed_tools": c.allowed_tools,
+                "conteudo": c.conteudo,
+            }
+        )
+
     plugin = {
         "name": row.name,
         "display_title": row.display_title,
@@ -175,7 +195,7 @@ async def export_plugin(
         "version": row.version,
     }
     try:
-        conteudo_zip, avisos = plugin_export_service.montar_zip(plugin, skills, subagents, mcps)
+        conteudo_zip, avisos = plugin_export_service.montar_zip(plugin, skills, subagents, mcps, hooks_json, commands)
     except ValueError as exc:
         raise _bad(str(exc))
     except Exception as exc:  # noqa: BLE001
