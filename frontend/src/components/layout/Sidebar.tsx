@@ -23,6 +23,7 @@ const NAV: NavEntry[] = [
   { to: "/vps", label: "VPS", icon: "server", key: "vps" },
   { to: "/calendario", label: "Calendário", icon: "calendar", key: null },
   { to: "/skills", label: "Skills", icon: "sparkle", key: "skills" },
+  { to: "/plugins", label: "Plugins", icon: "archive", key: null },
 ]
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
