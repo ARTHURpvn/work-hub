@@ -149,6 +149,41 @@ def excluir(slug: str) -> bool:
     return True
 
 
+def normalizar_frontmatter(conteudo: str) -> str:
+    """Reescreve os valores `name`/`description` do frontmatter como strings YAML
+    válidas (aspas duplas escapadas).
+
+    Descriptions com ':' (ex.: 'Gatilhos: ...') e aspas quebram o parser YAML
+    estrito do Claude Code, que então descarta TODO o frontmatter. Outras linhas
+    (booleans, listas) são preservadas intactas.
+    """
+    import json as _json
+
+    s = conteudo
+    if not s.lstrip().startswith("---"):
+        return conteudo
+    ini = s.find("---")
+    fim = s.find("\n---", ini + 3)
+    if fim == -1:
+        return conteudo
+    bloco = s[ini + 3 : fim]
+    resto = s[fim + 4 :]
+    saida = []
+    for raw in bloco.splitlines():
+        if not raw.strip():
+            continue
+        if ":" in raw:
+            chave, valor = raw.split(":", 1)
+            k, v = chave.strip(), valor.strip()
+            if k in ("name", "description"):
+                if len(v) >= 2 and ((v[0] == v[-1] == '"') or (v[0] == v[-1] == "'")):
+                    v = v[1:-1]
+                saida.append(f"{k}: {_json.dumps(v, ensure_ascii=False)}")
+                continue
+        saida.append(raw)
+    return "---\n" + "\n".join(saida) + "\n---\n" + resto.lstrip("\n")
+
+
 def espelhar_local(name: str, conteudo: str, arquivos: list[dict] | None = None) -> None:
     """Espelha a skill da API no filesystem local (~/.claude/skills/<name>/).
 
@@ -159,7 +194,7 @@ def espelhar_local(name: str, conteudo: str, arquivos: list[dict] | None = None)
         raise ValueError("name inválido para skill local")
     base = _root("pessoal") / name
     base.mkdir(parents=True, exist_ok=True)
-    (base / "SKILL.md").write_text(conteudo, encoding="utf-8")
+    (base / "SKILL.md").write_text(normalizar_frontmatter(conteudo), encoding="utf-8")
 
     mantidos = {(base / "SKILL.md").resolve()}
     for a in arquivos or []:
