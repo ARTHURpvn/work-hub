@@ -8,6 +8,7 @@ from app.database import get_session
 from app.deps import get_current_user
 from app.schemas.plugin import PluginCreate, PluginResponse, PluginUpdate
 from app.services import (
+    mcp_service,
     plugin_export_service,
     plugin_service,
     skill_arquivo_service,
@@ -26,6 +27,7 @@ async def _resposta(session: AsyncSession, row) -> PluginResponse:
     out = PluginResponse.model_validate(row)
     out.skill_ids = await plugin_service.skill_ids(session, row.id)
     out.subagent_ids = await plugin_service.subagent_ids(session, row.id)
+    out.mcp_ids = await plugin_service.mcp_ids(session, row.id)
     return out
 
 
@@ -58,6 +60,7 @@ async def create_plugin(
         version=body.version.strip() or "0.1.0",
         ids=body.skill_ids,
         sub_ids=body.subagent_ids,
+        mcp_ids_=body.mcp_ids,
     )
     return await _resposta(session, row)
 
@@ -89,6 +92,7 @@ async def update_plugin(
         row,
         ids=body.skill_ids,
         sub_ids=body.subagent_ids,
+        mcp_ids_=body.mcp_ids,
         display_title=(body.display_title.strip() if body.display_title else None),
         descricao=body.descricao,
         version=(body.version.strip() if body.version else None),
@@ -145,6 +149,13 @@ async def export_plugin(
             }
         )
 
+    mcps: list[dict] = []
+    for mid in await plugin_service.mcp_ids(session, pid):
+        srv = await mcp_service.obter(session, mid)
+        if srv is None:
+            continue
+        mcps.append({"name": srv.name, "bloco": mcp_service.bloco_export(srv)})
+
     plugin = {
         "name": row.name,
         "display_title": row.display_title,
@@ -152,7 +163,7 @@ async def export_plugin(
         "version": row.version,
     }
     try:
-        conteudo_zip, avisos = plugin_export_service.montar_zip(plugin, skills, subagents)
+        conteudo_zip, avisos = plugin_export_service.montar_zip(plugin, skills, subagents, mcps)
     except ValueError as exc:
         raise _bad(str(exc))
     except Exception as exc:  # noqa: BLE001

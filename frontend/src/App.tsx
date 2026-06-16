@@ -6,6 +6,7 @@ import { Configuracoes } from "@/pages/Configuracoes"
 import { Dashboard } from "@/pages/Dashboard"
 import { Kanban } from "@/pages/Kanban"
 import { Login } from "@/pages/Login"
+import { McpServers } from "@/pages/McpServers"
 import { Plugins } from "@/pages/Plugins"
 import { Projetos } from "@/pages/Projetos"
 import { Rotinas } from "@/pages/Rotinas"
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="skills" element={<Skills />} />
         <Route path="skills/:id" element={<SkillDetail />} />
         <Route path="subagents" element={<Subagents />} />
+        <Route path="mcp" element={<McpServers />} />
         <Route path="plugins" element={<Plugins />} />
         <Route path="rotinas" element={<Rotinas />} />
         <Route path="configuracoes" element={<Configuracoes />} />

@@ -9,6 +9,7 @@ export interface Plugin {
   atualizado_em: string
   skill_ids: string[]
   subagent_ids: string[]
+  mcp_ids: string[]
 }
 
 export interface PluginInput {
@@ -18,6 +19,7 @@ export interface PluginInput {
   version?: string
   skill_ids: string[]
   subagent_ids: string[]
+  mcp_ids: string[]
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

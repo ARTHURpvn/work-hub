@@ -13,6 +13,7 @@ class PluginResponse(BaseModel):
     atualizado_em: datetime
     skill_ids: list[uuid.UUID] = []
     subagent_ids: list[uuid.UUID] = []
+    mcp_ids: list[uuid.UUID] = []
 
     model_config = {"from_attributes": True}
 
@@ -24,6 +25,7 @@ class PluginCreate(BaseModel):
     version: str = "0.1.0"
     skill_ids: list[uuid.UUID] = []
     subagent_ids: list[uuid.UUID] = []
+    mcp_ids: list[uuid.UUID] = []
 
 
 class PluginUpdate(BaseModel):
@@ -32,3 +34,4 @@ class PluginUpdate(BaseModel):
     version: str | None = None
     skill_ids: list[uuid.UUID] | None = None
     subagent_ids: list[uuid.UUID] | None = None
+    mcp_ids: list[uuid.UUID] | None = None

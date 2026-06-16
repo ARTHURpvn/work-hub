@@ -46,8 +46,14 @@ def _escrever_arquivo(base: Path, caminho: str, conteudo: str) -> None:
     alvo.write_text(conteudo, encoding="utf-8")
 
 
-def _montar_arvore(raiz: Path, plugin: dict, skills: list[dict], subagents: list[dict] | None = None) -> Path:
-    """Escreve a árvore marketplace→plugin→(skills+agents) e devolve a pasta do plugin."""
+def _montar_arvore(
+    raiz: Path,
+    plugin: dict,
+    skills: list[dict],
+    subagents: list[dict] | None = None,
+    mcps: list[dict] | None = None,
+) -> Path:
+    """Escreve a árvore marketplace→plugin→(skills+agents+.mcp.json) e devolve a pasta do plugin."""
     name = plugin["name"]
     mkt = raiz / f"{name}-marketplace"
     plugin_dir = mkt / "plugins" / name
@@ -106,6 +112,14 @@ def _montar_arvore(raiz: Path, plugin: dict, skills: list[dict], subagents: list
         )
         (plugin_dir / "agents" / f"{sa['name']}.md").write_text(md, encoding="utf-8")
 
+    # MCP servers: .mcp.json na raiz (segredos como placeholder ${KEY}, nunca valor real)
+    if mcps:
+        mcp_servers = {m["name"]: m["bloco"] for m in mcps if m.get("name") and m.get("bloco")}
+        if mcp_servers:
+            (plugin_dir / ".mcp.json").write_text(
+                json.dumps({"mcpServers": mcp_servers}, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+
     # README de instalação
     (mkt / "README.md").write_text(
         f"# {plugin.get('display_title') or name}\n\n"
@@ -152,13 +166,18 @@ def _zipar(raiz: Path) -> bytes:
     return buf.getvalue()
 
 
-def montar_zip(plugin: dict, skills: list[dict], subagents: list[dict] | None = None) -> tuple[bytes, list[str]]:
-    """Gera o .zip do marketplace+plugin (skills + subagents). Devolve (bytes, avisos)."""
+def montar_zip(
+    plugin: dict,
+    skills: list[dict],
+    subagents: list[dict] | None = None,
+    mcps: list[dict] | None = None,
+) -> tuple[bytes, list[str]]:
+    """Gera o .zip do marketplace+plugin (skills + subagents + .mcp.json). Devolve (bytes, avisos)."""
     validar_name(plugin["name"])
-    if not skills and not subagents:
-        raise ValueError("O plugin precisa de pelo menos uma skill ou subagent.")
+    if not skills and not subagents and not mcps:
+        raise ValueError("O plugin precisa de pelo menos uma skill, subagent ou MCP.")
     with tempfile.TemporaryDirectory() as d:
         raiz = Path(d)
-        plugin_dir = _montar_arvore(raiz, plugin, skills, subagents)
+        plugin_dir = _montar_arvore(raiz, plugin, skills, subagents, mcps)
         avisos = _validar_cli(plugin_dir)
         return _zipar(raiz), avisos

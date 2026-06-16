@@ -4,6 +4,7 @@ import { Icon } from "@/components/ui/Icon"
 import { Modal } from "@/components/ui/Modal"
 import { Button, Check, Empty, Field, TextInput } from "@/components/ui/kit"
 import { usePluginMutations, usePlugins } from "@/hooks/usePlugins"
+import { useMcpServers } from "@/hooks/useMcpServers"
 import { useSkills } from "@/hooks/useSkills"
 import { useSubagents } from "@/hooks/useSubagents"
 import { confirm } from "@/store/confirmStore"
@@ -13,6 +14,7 @@ export function Plugins() {
   const { data: plugins, isLoading, isError } = usePlugins()
   const { data: skills } = useSkills()
   const { data: subagents } = useSubagents()
+  const { data: mcps } = useMcpServers()
   const { create, update, remove, exportar } = usePluginMutations()
 
   const [editor, setEditor] = useState<Plugin | "novo" | null>(null)
@@ -107,7 +109,7 @@ export function Plugins() {
               </p>
               <div className="spread">
                 <span className="t-meta mono truncate">
-                  {p.name} · {p.skill_ids.length} skill(s) · {p.subagent_ids.length} subagent(s)
+                  {p.name} · {p.skill_ids.length} skill(s) · {p.subagent_ids.length} subagent(s) · {p.mcp_ids.length} MCP
                 </span>
               </div>
               <div className="row" style={{ gap: 8, marginTop: 12 }}>
@@ -116,8 +118,8 @@ export function Plugins() {
                   variant="primary"
                   icon="download"
                   onClick={() => exportarPlugin(p)}
-                  disabled={exportar.isPending || (p.skill_ids.length === 0 && p.subagent_ids.length === 0)}
-                  title={p.skill_ids.length === 0 && p.subagent_ids.length === 0 ? "Adicione skills ou subagents primeiro" : undefined}
+                  disabled={exportar.isPending || (p.skill_ids.length === 0 && p.subagent_ids.length === 0 && p.mcp_ids.length === 0)}
+                  title={p.skill_ids.length === 0 && p.subagent_ids.length === 0 && p.mcp_ids.length === 0 ? "Adicione skills, subagents ou MCP primeiro" : undefined}
                 >
                   Exportar
                 </Button>
@@ -136,6 +138,7 @@ export function Plugins() {
           plugin={editor === "novo" ? null : editor}
           skills={(skills ?? []).map((s) => ({ id: s.id, label: s.display_title || s.name }))}
           subagents={(subagents ?? []).map((s) => ({ id: s.id, label: s.name }))}
+          mcps={(mcps ?? []).map((m) => ({ id: m.id, label: m.name }))}
           saving={create.isPending || update.isPending}
           onClose={() => setEditor(null)}
           onSave={(body) => {
@@ -170,6 +173,7 @@ function PluginEditor({
   plugin,
   skills,
   subagents,
+  mcps,
   saving,
   onClose,
   onSave,
@@ -177,6 +181,7 @@ function PluginEditor({
   plugin: Plugin | null
   skills: { id: string; label: string }[]
   subagents: { id: string; label: string }[]
+  mcps: { id: string; label: string }[]
   saving: boolean
   onClose: () => void
   onSave: (body: {
@@ -186,6 +191,7 @@ function PluginEditor({
     version: string
     skill_ids: string[]
     subagent_ids: string[]
+    mcp_ids: string[]
   }) => void
 }) {
   const [name, setName] = useState(plugin?.name ?? "")
@@ -194,9 +200,10 @@ function PluginEditor({
   const [version, setVersion] = useState(plugin?.version ?? "0.1.0")
   const [sel, setSel] = useState<Set<string>>(new Set(plugin?.skill_ids ?? []))
   const [selSub, setSelSub] = useState<Set<string>>(new Set(plugin?.subagent_ids ?? []))
+  const [selMcp, setSelMcp] = useState<Set<string>>(new Set(plugin?.mcp_ids ?? []))
   const [erro, setErro] = useState("")
 
-  useEffect(() => setErro(""), [name, displayTitle, version, sel, selSub])
+  useEffect(() => setErro(""), [name, displayTitle, version, sel, selSub, selMcp])
 
   function toggle(id: string) {
     setSel((s) => {
@@ -214,6 +221,14 @@ function PluginEditor({
     })
   }
 
+  function toggleMcp(id: string) {
+    setSelMcp((s) => {
+      const n = new Set(s)
+      n.has(id) ? n.delete(id) : n.add(id)
+      return n
+    })
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!plugin) {
@@ -223,8 +238,8 @@ function PluginEditor({
         return
       }
     }
-    if (sel.size === 0 && selSub.size === 0) {
-      setErro("Selecione ao menos uma skill ou subagent.")
+    if (sel.size === 0 && selSub.size === 0 && selMcp.size === 0) {
+      setErro("Selecione ao menos uma skill, subagent ou MCP.")
       return
     }
     onSave({
@@ -234,6 +249,7 @@ function PluginEditor({
       version: version.trim() || "0.1.0",
       skill_ids: [...sel],
       subagent_ids: [...selSub],
+      mcp_ids: [...selMcp],
     })
   }
 
@@ -288,6 +304,23 @@ function PluginEditor({
               >
                 <Check on={selSub.has(s.id)} onClick={() => toggleSub(s.id)} />
                 <span className="truncate">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        </Field>
+
+        <Field label={`MCP servers (${selMcp.size} selecionado(s))`}>
+          <div className="card" style={{ maxHeight: 180, overflow: "auto", padding: 6 }}>
+            {mcps.length === 0 && <p className="muted" style={{ padding: 8, margin: 0 }}>Nenhum MCP disponível.</p>}
+            {mcps.map((m) => (
+              <div
+                key={m.id}
+                className="lrow click"
+                style={{ padding: "7px 8px", gap: 10 }}
+                onClick={() => toggleMcp(m.id)}
+              >
+                <Check on={selMcp.has(m.id)} onClick={() => toggleMcp(m.id)} />
+                <span className="truncate">{m.label}</span>
               </div>
             ))}
           </div>

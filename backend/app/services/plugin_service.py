@@ -4,6 +4,7 @@ import uuid
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.mcp_server import PluginMcp
 from app.models.plugin import Plugin, PluginSkill
 from app.models.subagent import PluginSubagent
 
@@ -48,6 +49,19 @@ async def _set_subagents(session: AsyncSession, plugin_id: uuid.UUID, ids: list[
         session.add(PluginSubagent(plugin_id=plugin_id, subagent_id=sid))
 
 
+async def mcp_ids(session: AsyncSession, plugin_id: uuid.UUID) -> list[uuid.UUID]:
+    result = await session.execute(
+        select(PluginMcp.mcp_server_id).where(PluginMcp.plugin_id == plugin_id)
+    )
+    return [r[0] for r in result.all()]
+
+
+async def _set_mcps(session: AsyncSession, plugin_id: uuid.UUID, ids: list[uuid.UUID]) -> None:
+    await session.execute(delete(PluginMcp).where(PluginMcp.plugin_id == plugin_id))
+    for mid in dict.fromkeys(ids):
+        session.add(PluginMcp(plugin_id=plugin_id, mcp_server_id=mid))
+
+
 async def criar(
     session: AsyncSession,
     *,
@@ -57,12 +71,14 @@ async def criar(
     version: str,
     ids: list[uuid.UUID],
     sub_ids: list[uuid.UUID] | None = None,
+    mcp_ids_: list[uuid.UUID] | None = None,
 ) -> Plugin:
     row = Plugin(name=name, display_title=display_title, descricao=descricao, version=version)
     session.add(row)
     await session.flush()
     await _set_skills(session, row.id, ids)
     await _set_subagents(session, row.id, sub_ids or [])
+    await _set_mcps(session, row.id, mcp_ids_ or [])
     await session.commit()
     await session.refresh(row)
     return row
@@ -74,6 +90,7 @@ async def atualizar(
     *,
     ids: list[uuid.UUID] | None = None,
     sub_ids: list[uuid.UUID] | None = None,
+    mcp_ids_: list[uuid.UUID] | None = None,
     **campos,
 ) -> Plugin:
     for chave, valor in campos.items():
@@ -83,6 +100,8 @@ async def atualizar(
         await _set_skills(session, row.id, ids)
     if sub_ids is not None:
         await _set_subagents(session, row.id, sub_ids)
+    if mcp_ids_ is not None:
+        await _set_mcps(session, row.id, mcp_ids_)
     await session.commit()
     await session.refresh(row)
     return row
