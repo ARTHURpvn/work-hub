@@ -120,16 +120,16 @@ function ParesEditor({ titulo, pares, onChange }: { titulo: string; pares: ParCo
     <Field label={titulo}>
       <div className="stack" style={{ gap: 6 }}>
         {pares.map((p, i) => (
-          <div key={i} className="row" style={{ gap: 6 }}>
-            <TextInput style={{ flex: 1 }} value={p.key} placeholder="KEY" onChange={(e) => set(i, { key: e.target.value })} />
+          <div key={i} className="row wrap" style={{ gap: 6 }}>
+            <TextInput style={{ flex: 1, minWidth: 110 }} value={p.key} placeholder="KEY" onChange={(e) => set(i, { key: e.target.value })} />
             <TextInput
-              style={{ flex: 1.4 }}
+              style={{ flex: 1.4, minWidth: 140 }}
               type={p.secret ? "password" : "text"}
               value={p.value}
               placeholder={p.secret ? "•••• (segredo)" : "valor"}
               onChange={(e) => set(i, { value: e.target.value })}
             />
-            <button type="button" className={"csug" + (p.secret ? "" : "")} onClick={() => set(i, { secret: !p.secret })} title="Marcar como segredo (cifrado, vira ${KEY} no export)">
+            <button type="button" className="csug" aria-pressed={p.secret} onClick={() => set(i, { secret: !p.secret })} title="Marcar como segredo (cifrado, vira ${KEY} no export)">
               {p.secret ? "🔒 secret" : "público"}
             </button>
             <Button type="button" size="sm" variant="ghost" icon="x" onClick={() => onChange(pares.filter((_, j) => j !== i))} />
@@ -196,7 +196,7 @@ function McpEditor({
             <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="swagger" autoFocus required />
           </Field>
         )}
-        <div className="row" style={{ gap: 10 }}>
+        <div className="row wrap" style={{ gap: 10 }}>
           <div style={{ width: 140 }}>
             <Field label="Transporte">
               <Select value={transport} onChange={(e) => setTransport(e.target.value as "stdio" | "http")}>

@@ -149,7 +149,7 @@ function HookEditor({
   return (
     <Modal onClose={onClose} title={hook ? "Editar hook" : "Novo hook"} size="lg">
       <form onSubmit={submit} className="stack" style={{ gap: 0 }}>
-        <div className="row" style={{ gap: 10 }}>
+        <div className="row wrap" style={{ gap: 10 }}>
           <div style={{ width: 200 }}>
             <Field label="Evento">
               <Select value={event} onChange={(e) => setEvent(e.target.value)}>

@@ -1,3 +1,4 @@
+import logging
 import uuid
 from urllib.parse import quote
 
@@ -198,8 +199,12 @@ async def export_plugin(
         conteudo_zip, avisos = plugin_export_service.montar_zip(plugin, skills, subagents, mcps, hooks_json, commands)
     except ValueError as exc:
         raise _bad(str(exc))
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro ao gerar plugin: {exc}")
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("Falha ao gerar plugin %s", row.name)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao gerar o plugin. Verifique os logs do servidor.",
+        )
 
     headers = {
         "Content-Disposition": f'attachment; filename="{row.name}-marketplace.zip"',

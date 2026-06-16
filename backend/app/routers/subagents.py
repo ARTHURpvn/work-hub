@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -132,7 +133,11 @@ async def melhorar_subagent(
         resultado = await subagent_service.melhorar(row, token=token, api_key=api_key, model=model)
     except ValueError as exc:
         raise _bad(str(exc))
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Erro ao chamar a IA: {exc}")
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("Falha ao melhorar subagent %s", sid)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Erro ao chamar a IA. Verifique os logs do servidor.",
+        )
     await uso_service.registrar(session, "subagent-melhorar", "claude-code" if token else model, 0, 0)
     return SubagentMelhoria(**resultado)

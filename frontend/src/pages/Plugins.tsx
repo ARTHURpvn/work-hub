@@ -293,7 +293,7 @@ function PluginEditor({
             <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="meu-toolkit" autoFocus required />
           </Field>
         )}
-        <div className="row" style={{ gap: 10 }}>
+        <div className="row wrap" style={{ gap: 10 }}>
           <Field label="Título">
             <TextInput value={displayTitle} onChange={(e) => setDisplayTitle(e.target.value)} placeholder="Meu Toolkit" />
           </Field>

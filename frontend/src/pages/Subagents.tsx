@@ -201,7 +201,7 @@ function SubagentEditor({
         <Field label="Descrição (quando delegar) *" hint="3ª pessoa, 'Use quando...' + gatilhos. É o que decide a invocação automática.">
           <TextInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Use quando…" />
         </Field>
-        <div className="row" style={{ gap: 10 }}>
+        <div className="row wrap" style={{ gap: 10 }}>
           <div style={{ width: 160 }}>
             <Field label="Modelo">
               <Select value={model} onChange={(e) => setModel(e.target.value)}>

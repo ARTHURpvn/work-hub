@@ -17,13 +17,26 @@ _INATIVIDADE_S = 300
 
 
 def _env(token: str) -> dict:
-    return {
-        **os.environ,
+    """Env mínimo para o subprocess `claude`.
+
+    Não herda `**os.environ`: o CLI roda em modo headless executando prompt
+    influenciado pelo usuário, então segredos do app (ENCRYPTION_KEY,
+    APP_SECRET_KEY, ADMIN_PASSWORD_HASH, DATABASE_URL, ...) NUNCA devem entrar
+    no ambiente dele. Passamos só o necessário para localizar/rodar o binário.
+    """
+    base = {
+        "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
         "CLAUDE_CODE_OAUTH_TOKEN": token,
         "HOME": "/tmp",
         "CLAUDE_CONFIG_DIR": "/tmp/claude-cfg",
         "IS_SANDBOX": "1",
     }
+    # Preserva apenas locale/encoding, sem vazar segredos.
+    for chave in ("LANG", "LC_ALL", "LC_CTYPE", "TZ"):
+        valor = os.environ.get(chave)
+        if valor:
+            base[chave] = valor
+    return base
 
 
 async def _run(token: str, prompt: str) -> str:
