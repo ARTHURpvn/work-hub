@@ -4,6 +4,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { Calendario } from "@/pages/Calendario"
 import { Configuracoes } from "@/pages/Configuracoes"
 import { Dashboard } from "@/pages/Dashboard"
+import { Hooks } from "@/pages/Hooks"
 import { Kanban } from "@/pages/Kanban"
 import { Login } from "@/pages/Login"
 import { McpServers } from "@/pages/McpServers"
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="skills/:id" element={<SkillDetail />} />
         <Route path="subagents" element={<Subagents />} />
         <Route path="mcp" element={<McpServers />} />
+        <Route path="hooks" element={<Hooks />} />
         <Route path="plugins" element={<Plugins />} />
         <Route path="rotinas" element={<Rotinas />} />
         <Route path="configuracoes" element={<Configuracoes />} />

@@ -6,6 +6,7 @@ from app.models.linkedin import LinkedinPost, PromptTemplate
 from app.models.projeto import Projeto, ProjetoMembro
 from app.models.rotina import Rotina, UsoIA
 from app.models.skill import SkillRef
+from app.models.hook import Hook, PluginHook
 from app.models.mcp_server import McpServer, PluginMcp, SkillMcp
 from app.models.plugin import Plugin, PluginSkill
 from app.models.subagent import PluginSubagent, Subagent
@@ -43,6 +44,8 @@ __all__ = [
     "McpServer",
     "PluginMcp",
     "SkillMcp",
+    "Hook",
+    "PluginHook",
     "IntegracaoCalendario",
     "SyncLog",
     "PromptTemplate",

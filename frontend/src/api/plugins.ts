@@ -10,6 +10,7 @@ export interface Plugin {
   skill_ids: string[]
   subagent_ids: string[]
   mcp_ids: string[]
+  hook_ids: string[]
 }
 
 export interface PluginInput {
@@ -20,6 +21,7 @@ export interface PluginInput {
   skill_ids: string[]
   subagent_ids: string[]
   mcp_ids: string[]
+  hook_ids: string[]
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

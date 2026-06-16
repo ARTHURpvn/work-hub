@@ -25,6 +25,7 @@ const NAV: NavEntry[] = [
   { to: "/skills", label: "Skills", icon: "sparkle", key: "skills" },
   { to: "/subagents", label: "Subagents", icon: "bot", key: null },
   { to: "/mcp", label: "MCP", icon: "link", key: null },
+  { to: "/hooks", label: "Hooks", icon: "clock", key: null },
   { to: "/plugins", label: "Plugins", icon: "archive", key: null },
 ]
 

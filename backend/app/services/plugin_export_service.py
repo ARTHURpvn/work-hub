@@ -52,8 +52,9 @@ def _montar_arvore(
     skills: list[dict],
     subagents: list[dict] | None = None,
     mcps: list[dict] | None = None,
+    hooks_json: dict | None = None,
 ) -> Path:
-    """Escreve a árvore marketplace→plugin→(skills+agents+.mcp.json) e devolve a pasta do plugin."""
+    """Escreve a árvore marketplace→plugin→(skills+agents+.mcp.json+hooks) e devolve a pasta."""
     name = plugin["name"]
     mkt = raiz / f"{name}-marketplace"
     plugin_dir = mkt / "plugins" / name
@@ -120,6 +121,13 @@ def _montar_arvore(
                 json.dumps({"mcpServers": mcp_servers}, ensure_ascii=False, indent=2), encoding="utf-8"
             )
 
+    # hooks: hooks/hooks.json
+    if hooks_json and hooks_json.get("hooks"):
+        (plugin_dir / "hooks").mkdir(parents=True, exist_ok=True)
+        (plugin_dir / "hooks" / "hooks.json").write_text(
+            json.dumps(hooks_json, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
     # README de instalação
     (mkt / "README.md").write_text(
         f"# {plugin.get('display_title') or name}\n\n"
@@ -171,13 +179,15 @@ def montar_zip(
     skills: list[dict],
     subagents: list[dict] | None = None,
     mcps: list[dict] | None = None,
+    hooks_json: dict | None = None,
 ) -> tuple[bytes, list[str]]:
-    """Gera o .zip do marketplace+plugin (skills + subagents + .mcp.json). Devolve (bytes, avisos)."""
+    """Gera o .zip do marketplace+plugin (skills+subagents+.mcp.json+hooks). Devolve (bytes, avisos)."""
     validar_name(plugin["name"])
-    if not skills and not subagents and not mcps:
-        raise ValueError("O plugin precisa de pelo menos uma skill, subagent ou MCP.")
+    tem_hooks = bool(hooks_json and hooks_json.get("hooks"))
+    if not skills and not subagents and not mcps and not tem_hooks:
+        raise ValueError("O plugin precisa de pelo menos uma skill, subagent, MCP ou hook.")
     with tempfile.TemporaryDirectory() as d:
         raiz = Path(d)
-        plugin_dir = _montar_arvore(raiz, plugin, skills, subagents, mcps)
+        plugin_dir = _montar_arvore(raiz, plugin, skills, subagents, mcps, hooks_json)
         avisos = _validar_cli(plugin_dir)
         return _zipar(raiz), avisos

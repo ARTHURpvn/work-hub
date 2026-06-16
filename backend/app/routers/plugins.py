@@ -8,6 +8,7 @@ from app.database import get_session
 from app.deps import get_current_user
 from app.schemas.plugin import PluginCreate, PluginResponse, PluginUpdate
 from app.services import (
+    hook_service,
     mcp_service,
     plugin_export_service,
     plugin_service,
@@ -28,6 +29,7 @@ async def _resposta(session: AsyncSession, row) -> PluginResponse:
     out.skill_ids = await plugin_service.skill_ids(session, row.id)
     out.subagent_ids = await plugin_service.subagent_ids(session, row.id)
     out.mcp_ids = await plugin_service.mcp_ids(session, row.id)
+    out.hook_ids = await plugin_service.hook_ids(session, row.id)
     return out
 
 
@@ -61,6 +63,7 @@ async def create_plugin(
         ids=body.skill_ids,
         sub_ids=body.subagent_ids,
         mcp_ids_=body.mcp_ids,
+        hook_ids_=body.hook_ids,
     )
     return await _resposta(session, row)
 
@@ -93,6 +96,7 @@ async def update_plugin(
         ids=body.skill_ids,
         sub_ids=body.subagent_ids,
         mcp_ids_=body.mcp_ids,
+        hook_ids_=body.hook_ids,
         display_title=(body.display_title.strip() if body.display_title else None),
         descricao=body.descricao,
         version=(body.version.strip() if body.version else None),
@@ -155,6 +159,14 @@ async def export_plugin(
         if srv is None:
             continue
         mcps.append({"name": srv.name, "bloco": mcp_service.bloco_export(srv)})
+
+    hook_rows = []
+    for hid in await plugin_service.hook_ids(session, pid):
+        h = await hook_service.obter(session, hid)
+        if h is None:
+            continue
+        hook_rows.append({"event": h.event, "matcher": h.matcher, "command": h.command, "timeout": h.timeout})
+    hooks_json = hook_service.montar_hooks_json(hook_rows) if hook_rows else None
 
     plugin = {
         "name": row.name,
