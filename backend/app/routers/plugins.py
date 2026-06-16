@@ -12,6 +12,7 @@ from app.services import (
     plugin_service,
     skill_arquivo_service,
     skill_remota_service,
+    subagent_service,
 )
 
 router = APIRouter()
@@ -24,6 +25,7 @@ def _bad(msg: str):
 async def _resposta(session: AsyncSession, row) -> PluginResponse:
     out = PluginResponse.model_validate(row)
     out.skill_ids = await plugin_service.skill_ids(session, row.id)
+    out.subagent_ids = await plugin_service.subagent_ids(session, row.id)
     return out
 
 
@@ -55,6 +57,7 @@ async def create_plugin(
         descricao=body.descricao,
         version=body.version.strip() or "0.1.0",
         ids=body.skill_ids,
+        sub_ids=body.subagent_ids,
     )
     return await _resposta(session, row)
 
@@ -85,6 +88,7 @@ async def update_plugin(
         session,
         row,
         ids=body.skill_ids,
+        sub_ids=body.subagent_ids,
         display_title=(body.display_title.strip() if body.display_title else None),
         descricao=body.descricao,
         version=(body.version.strip() if body.version else None),
@@ -126,6 +130,21 @@ async def export_plugin(
         ]
         skills.append({"name": s.name, "conteudo": s.conteudo, "arquivos": arquivos})
 
+    subagents: list[dict] = []
+    for said in await plugin_service.subagent_ids(session, pid):
+        sa = await subagent_service.obter(session, said)
+        if sa is None:
+            continue
+        subagents.append(
+            {
+                "name": sa.name,
+                "description": sa.description,
+                "model": sa.model,
+                "tools": sa.tools,
+                "system_prompt": sa.system_prompt,
+            }
+        )
+
     plugin = {
         "name": row.name,
         "display_title": row.display_title,
@@ -133,7 +152,7 @@ async def export_plugin(
         "version": row.version,
     }
     try:
-        conteudo_zip, avisos = plugin_export_service.montar_zip(plugin, skills)
+        conteudo_zip, avisos = plugin_export_service.montar_zip(plugin, skills, subagents)
     except ValueError as exc:
         raise _bad(str(exc))
     except Exception as exc:  # noqa: BLE001

@@ -7,6 +7,7 @@ from app.models.projeto import Projeto, ProjetoMembro
 from app.models.rotina import Rotina, UsoIA
 from app.models.skill import SkillRef
 from app.models.plugin import Plugin, PluginSkill
+from app.models.subagent import PluginSubagent, Subagent
 from app.models.skill_arquivo import SkillArquivo
 from app.models.skill_chat import SkillChat
 from app.models.skill_remota import SkillRemota
@@ -36,6 +37,8 @@ __all__ = [
     "SkillChat",
     "Plugin",
     "PluginSkill",
+    "Subagent",
+    "PluginSubagent",
     "IntegracaoCalendario",
     "SyncLog",
     "PromptTemplate",

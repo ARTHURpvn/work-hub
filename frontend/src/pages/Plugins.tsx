@@ -5,12 +5,14 @@ import { Modal } from "@/components/ui/Modal"
 import { Button, Check, Empty, Field, TextInput } from "@/components/ui/kit"
 import { usePluginMutations, usePlugins } from "@/hooks/usePlugins"
 import { useSkills } from "@/hooks/useSkills"
+import { useSubagents } from "@/hooks/useSubagents"
 import { confirm } from "@/store/confirmStore"
 import { toast } from "@/store/toastStore"
 
 export function Plugins() {
   const { data: plugins, isLoading, isError } = usePlugins()
   const { data: skills } = useSkills()
+  const { data: subagents } = useSubagents()
   const { create, update, remove, exportar } = usePluginMutations()
 
   const [editor, setEditor] = useState<Plugin | "novo" | null>(null)
@@ -105,7 +107,7 @@ export function Plugins() {
               </p>
               <div className="spread">
                 <span className="t-meta mono truncate">
-                  {p.name} · {p.skill_ids.length} skill(s)
+                  {p.name} · {p.skill_ids.length} skill(s) · {p.subagent_ids.length} subagent(s)
                 </span>
               </div>
               <div className="row" style={{ gap: 8, marginTop: 12 }}>
@@ -114,8 +116,8 @@ export function Plugins() {
                   variant="primary"
                   icon="download"
                   onClick={() => exportarPlugin(p)}
-                  disabled={exportar.isPending || p.skill_ids.length === 0}
-                  title={p.skill_ids.length === 0 ? "Adicione skills primeiro" : undefined}
+                  disabled={exportar.isPending || (p.skill_ids.length === 0 && p.subagent_ids.length === 0)}
+                  title={p.skill_ids.length === 0 && p.subagent_ids.length === 0 ? "Adicione skills ou subagents primeiro" : undefined}
                 >
                   Exportar
                 </Button>
@@ -133,6 +135,7 @@ export function Plugins() {
         <PluginEditor
           plugin={editor === "novo" ? null : editor}
           skills={(skills ?? []).map((s) => ({ id: s.id, label: s.display_title || s.name }))}
+          subagents={(subagents ?? []).map((s) => ({ id: s.id, label: s.name }))}
           saving={create.isPending || update.isPending}
           onClose={() => setEditor(null)}
           onSave={(body) => {
@@ -166,27 +169,45 @@ export function Plugins() {
 function PluginEditor({
   plugin,
   skills,
+  subagents,
   saving,
   onClose,
   onSave,
 }: {
   plugin: Plugin | null
   skills: { id: string; label: string }[]
+  subagents: { id: string; label: string }[]
   saving: boolean
   onClose: () => void
-  onSave: (body: { name?: string; display_title: string; descricao: string; version: string; skill_ids: string[] }) => void
+  onSave: (body: {
+    name?: string
+    display_title: string
+    descricao: string
+    version: string
+    skill_ids: string[]
+    subagent_ids: string[]
+  }) => void
 }) {
   const [name, setName] = useState(plugin?.name ?? "")
   const [displayTitle, setDisplayTitle] = useState(plugin?.display_title ?? "")
   const [descricao, setDescricao] = useState(plugin?.descricao ?? "")
   const [version, setVersion] = useState(plugin?.version ?? "0.1.0")
   const [sel, setSel] = useState<Set<string>>(new Set(plugin?.skill_ids ?? []))
+  const [selSub, setSelSub] = useState<Set<string>>(new Set(plugin?.subagent_ids ?? []))
   const [erro, setErro] = useState("")
 
-  useEffect(() => setErro(""), [name, displayTitle, version, sel])
+  useEffect(() => setErro(""), [name, displayTitle, version, sel, selSub])
 
   function toggle(id: string) {
     setSel((s) => {
+      const n = new Set(s)
+      n.has(id) ? n.delete(id) : n.add(id)
+      return n
+    })
+  }
+
+  function toggleSub(id: string) {
+    setSelSub((s) => {
       const n = new Set(s)
       n.has(id) ? n.delete(id) : n.add(id)
       return n
@@ -202,8 +223,8 @@ function PluginEditor({
         return
       }
     }
-    if (sel.size === 0) {
-      setErro("Selecione ao menos uma skill.")
+    if (sel.size === 0 && selSub.size === 0) {
+      setErro("Selecione ao menos uma skill ou subagent.")
       return
     }
     onSave({
@@ -212,6 +233,7 @@ function PluginEditor({
       descricao: descricao.trim(),
       version: version.trim() || "0.1.0",
       skill_ids: [...sel],
+      subagent_ids: [...selSub],
     })
   }
 
@@ -248,6 +270,23 @@ function PluginEditor({
                 onClick={() => toggle(s.id)}
               >
                 <Check on={sel.has(s.id)} onClick={() => toggle(s.id)} />
+                <span className="truncate">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        </Field>
+
+        <Field label={`Subagents (${selSub.size} selecionado(s))`}>
+          <div className="card" style={{ maxHeight: 200, overflow: "auto", padding: 6 }}>
+            {subagents.length === 0 && <p className="muted" style={{ padding: 8, margin: 0 }}>Nenhum subagent disponível.</p>}
+            {subagents.map((s) => (
+              <div
+                key={s.id}
+                className="lrow click"
+                style={{ padding: "7px 8px", gap: 10 }}
+                onClick={() => toggleSub(s.id)}
+              >
+                <Check on={selSub.has(s.id)} onClick={() => toggleSub(s.id)} />
                 <span className="truncate">{s.label}</span>
               </div>
             ))}

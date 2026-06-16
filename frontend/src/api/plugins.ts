@@ -8,6 +8,7 @@ export interface Plugin {
   version: string
   atualizado_em: string
   skill_ids: string[]
+  subagent_ids: string[]
 }
 
 export interface PluginInput {
@@ -16,6 +17,7 @@ export interface PluginInput {
   descricao?: string | null
   version?: string
   skill_ids: string[]
+  subagent_ids: string[]
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
