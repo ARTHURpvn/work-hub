@@ -50,29 +50,30 @@
 }
 
 body.dark {
-  --bg: #1a1714;
-  --bg-2: #161310;
-  --surface: #242019;
-  --surface-2: #2c271f;
-  --surface-3: #353029;
-  --text: #efe9df;
-  --text-2: #c1b8aa;
-  --muted: #948b7c;
-  --border: #383128;
-  --border-2: #463e33;
-  --accent: #e08a64;
-  --accent-press: #ec9b78;
-  --accent-weak: #3a2b22;
-  --accent-text: #1a1714;
-  --ring: rgba(224, 138, 100, 0.32);
+  /* escuro neutro (cinza), com o laranja só no acento — evita o visual marrom */
+  --bg: #121316;
+  --bg-2: #0e0f11;
+  --surface: #1b1c20;
+  --surface-2: #232428;
+  --surface-3: #2d2e33;
+  --text: #ededf0;
+  --text-2: #b5b6bd;
+  --muted: #82838c;
+  --border: #2a2b30;
+  --border-2: #383940;
+  --accent: #e8895f;
+  --accent-press: #f0986f;
+  --accent-weak: #2c241f;
+  --accent-text: #121316;
+  --ring: rgba(232, 137, 95, 0.34);
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
   --shadow-lg: 0 20px 52px rgba(0,0,0,0.6), 0 6px 18px rgba(0,0,0,0.4);
   --ok: #5fb074; --ok-weak: #233127;
   --warn: #d6a445; --warn-weak: #362d1a;
   --danger: #e0795a; --danger-weak: #3a2620;
-  --info: #7a9be0; --info-weak: #20283a;
-  --o-otavio: #e08a64;
+  --info: #7a9be0; --info-weak: #1f2433;
+  --o-otavio: #e8895f;
   --o-titan: #b08ce8;
   --o-free: #d6a445;
   --o-pess: #5fb074;
@@ -452,6 +453,15 @@ body.dark .overlay { background: rgba(0,0,0,0.6); }
 .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: blink 1.2s infinite both; }
 .typing span:nth-child(2) { animation-delay: 0.2s; } .typing span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes blink { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
+.ai-progress { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ai-progress-fase { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.ai-progress-meta { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* bloco de demonstração/teste no chat de skill */
+.demo-box { margin-top: 10px; border: 1px solid color-mix(in srgb, var(--info) 40%, transparent); background: var(--info-weak); border-radius: var(--r-md); overflow: hidden; }
+.demo-head { display: flex; align-items: center; gap: 6px; padding: 6px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--info); border-bottom: 1px solid color-mix(in srgb, var(--info) 25%, transparent); }
+.demo-body { margin: 0; padding: 10px; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; line-height: 1.5; color: var(--text-2); max-height: 280px; overflow: auto; }
+.file-view { margin: 0; padding: 12px; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; line-height: 1.55; color: var(--text); background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-md); max-height: 50vh; overflow: auto; }
 
 /* ============================================================
    SKILL DETAIL (tela cheia: conteúdo + chat)
@@ -476,6 +486,13 @@ body.dark .overlay { background: rgba(0,0,0,0.6); }
   padding: 12px 14px;
 }
 .skill-editor-area textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+.skill-files { flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 18px 0; }
+.skill-file { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: 100px; padding: 4px 11px; cursor: pointer; max-width: 240px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.skill-file:hover { color: var(--text); border-color: var(--border-2); }
+.skill-file.on { color: var(--accent); background: var(--accent-weak); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.skill-file.add { color: var(--accent); border-style: dashed; background: transparent; }
+.skill-file-bar { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 10px 18px 0; }
+.skill-file-bar .input { flex: 1; font-size: 12.5px; }
 
 @media (max-width: 900px) {
   .skill-detail { height: auto; min-height: calc(100vh - 60px); }

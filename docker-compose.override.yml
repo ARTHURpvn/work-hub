@@ -6,8 +6,10 @@ services:
       - IP_ALLOWLIST=0.0.0.0/0
 
   backend:
+    # 8000 está ocupada por outro projeto (fastapi_app); o app real vai pelo proxy
+    # na :80, este bind é só para acesso direto de debug.
     ports:
-      - "8000:8000"
+      - "8010:8000"
     environment:
       - APP_ENV=development
 

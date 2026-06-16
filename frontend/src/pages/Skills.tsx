@@ -4,6 +4,7 @@ import type { Skill } from "@/api/skills"
 import { Icon } from "@/components/ui/Icon"
 import { Modal } from "@/components/ui/Modal"
 import { Button, Empty, Field, TextInput } from "@/components/ui/kit"
+import { SkillsAssistente } from "@/components/skills/SkillsAssistente"
 import { useSkillMutations, useSkills } from "@/hooks/useSkills"
 import { confirm } from "@/store/confirmStore"
 import { toast } from "@/store/toastStore"
@@ -23,6 +24,7 @@ export function Skills() {
   const [description, setDescription] = useState("")
   const [erro, setErro] = useState("")
   const [busca, setBusca] = useState("")
+  const [assistOpen, setAssistOpen] = useState(false)
 
   const all = skills ?? []
   const q = busca.trim().toLowerCase()
@@ -85,6 +87,9 @@ export function Skills() {
           <div className="sub">Skills custom no seu workspace da Anthropic (Skill Management API)</div>
         </div>
         <div className="row" style={{ gap: 8 }}>
+          <Button icon="sparkle" onClick={() => setAssistOpen(true)}>
+            Assistente
+          </Button>
           <Button icon="download" onClick={handleMigrar} disabled={migrar.isPending}>
             {migrar.isPending ? "Migrando…" : "Migrar locais"}
           </Button>
@@ -93,6 +98,8 @@ export function Skills() {
           </Button>
         </div>
       </div>
+
+      {assistOpen && <SkillsAssistente onClose={() => setAssistOpen(false)} />}
 
       {isError && (
         <div className="card card-pad" style={{ borderColor: "var(--danger)", color: "var(--danger)" }}>

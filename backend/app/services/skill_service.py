@@ -149,6 +149,87 @@ def excluir(slug: str) -> bool:
     return True
 
 
+def normalizar_frontmatter(conteudo: str) -> str:
+    """Reescreve os valores `name`/`description` do frontmatter como strings YAML
+    válidas (aspas duplas escapadas).
+
+    Descriptions com ':' (ex.: 'Gatilhos: ...') e aspas quebram o parser YAML
+    estrito do Claude Code, que então descarta TODO o frontmatter. Outras linhas
+    (booleans, listas) são preservadas intactas.
+    """
+    import json as _json
+
+    s = conteudo
+    if not s.lstrip().startswith("---"):
+        return conteudo
+    ini = s.find("---")
+    fim = s.find("\n---", ini + 3)
+    if fim == -1:
+        return conteudo
+    bloco = s[ini + 3 : fim]
+    resto = s[fim + 4 :]
+    saida = []
+    for raw in bloco.splitlines():
+        if not raw.strip():
+            continue
+        if ":" in raw:
+            chave, valor = raw.split(":", 1)
+            k, v = chave.strip(), valor.strip()
+            if k in ("name", "description"):
+                if len(v) >= 2 and ((v[0] == v[-1] == '"') or (v[0] == v[-1] == "'")):
+                    v = v[1:-1]
+                saida.append(f"{k}: {_json.dumps(v, ensure_ascii=False)}")
+                continue
+        saida.append(raw)
+    return "---\n" + "\n".join(saida) + "\n---\n" + resto.lstrip("\n")
+
+
+def espelhar_local(name: str, conteudo: str, arquivos: list[dict] | None = None) -> None:
+    """Espelha a skill da API no filesystem local (~/.claude/skills/<name>/).
+
+    Escreve SKILL.md + arquivos auxiliares e REMOVE auxiliares que não existem mais
+    (espelho exato — a API é a fonte da verdade). Idempotente.
+    """
+    if not SLUG_RE.match(name):
+        raise ValueError("name inválido para skill local")
+    base = _root("pessoal") / name
+    base.mkdir(parents=True, exist_ok=True)
+    (base / "SKILL.md").write_text(normalizar_frontmatter(conteudo), encoding="utf-8")
+
+    mantidos = {(base / "SKILL.md").resolve()}
+    for a in arquivos or []:
+        caminho = (a.get("caminho") or "").strip()
+        conteudo_aux = a.get("conteudo")
+        if not caminho or not isinstance(conteudo_aux, str):
+            continue
+        alvo = (base / caminho).resolve()
+        if not str(alvo).startswith(str(base.resolve()) + "/"):
+            continue  # path traversal
+        alvo.parent.mkdir(parents=True, exist_ok=True)
+        alvo.write_text(conteudo_aux, encoding="utf-8")
+        mantidos.add(alvo)
+
+    # poda: remove arquivos auxiliares antigos que não vieram desta vez
+    for f in base.rglob("*"):
+        if f.is_file() and f.resolve() not in mantidos:
+            f.unlink()
+    # remove diretórios vazios resultantes da poda
+    for d in sorted([p for p in base.rglob("*") if p.is_dir()], reverse=True):
+        if not any(d.iterdir()):
+            d.rmdir()
+
+
+def remover_local(name: str) -> bool:
+    """Remove o espelho local da skill. Best-effort (False se não existir)."""
+    if not SLUG_RE.match(name):
+        return False
+    d = _root("pessoal") / name
+    if not d.is_dir():
+        return False
+    shutil.rmtree(d)
+    return True
+
+
 def importar(origem: str, slug: str) -> dict:
     """Copia a skill (plugin/desktop) para a pasta pessoal (~/.claude/skills)."""
     if origem == "pessoal":
@@ -163,34 +244,29 @@ def importar(origem: str, slug: str) -> dict:
     return obter("pessoal", slug)  # type: ignore[return-value]
 
 
-async def chat(conteudo: str, mensagens: list[dict], api_key: str = "", model: str = "") -> dict:
-    """Conversa multi-turno para melhorar a skill.
+async def chat(
+    conteudo: str,
+    mensagens: list[dict],
+    api_key: str = "",
+    model: str = "",
+    arquivos: list[dict] | None = None,
+) -> dict:
+    """Conversa multi-turno para melhorar a skill (bundle multi-arquivo).
 
     `mensagens`: lista [{role: "user"|"assistant", content: str}] já trocada.
-    Retorna {"reply": str, "sugestao_conteudo": str | None}: a resposta do
-    assistente e, quando ele propõe uma mudança, o SKILL.md completo revisado.
+    `arquivos`: auxiliares atuais da skill (contexto p/ a IA).
+    Retorna {reply, sugestao_conteudo, sugestao_arquivos, demonstracao}.
     """
     api_key = api_key or settings.anthropic_api_key
     model = model or settings.anthropic_model
     if not api_key:
         raise ValueError("Chave da API Anthropic não configurada — defina em Configurações")
 
-    import json
-
     from anthropic import AsyncAnthropic
 
+    from app.services import skill_prompt
+
     client = AsyncAnthropic(api_key=api_key)
-    system = (
-        "Você é um especialista em Claude Code Skills ajudando a melhorar um arquivo SKILL.md. "
-        "Converse em português do Brasil, de forma direta e técnica. "
-        "Sempre responda APENAS com um objeto JSON válido, sem texto fora dele, no formato:\n"
-        '{"reply": "<sua resposta conversacional>", "sugestao_conteudo": "<SKILL.md completo revisado ou null>"}\n'
-        "Use sugestao_conteudo (string com o SKILL.md inteiro, frontmatter incluso) somente quando "
-        "estiver propondo uma alteração concreta no arquivo; caso contrário, use null. "
-        "Mantenha o frontmatter YAML válido (name e description).\n\n"
-        "SKILL.md atual:\n"
-        "```\n" + conteudo + "\n```"
-    )
 
     api_msgs = [
         {"role": m["role"], "content": m["content"]}
@@ -202,13 +278,24 @@ async def chat(conteudo: str, mensagens: list[dict], api_key: str = "", model: s
 
     msg = await client.messages.create(
         model=model,
-        max_tokens=4000,
-        system=system,
+        max_tokens=8000,
+        system=skill_prompt.system(conteudo, arquivos),
         messages=api_msgs,
     )
     texto = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text").strip()
 
-    reply, sugestao = texto, None
+    resultado = _parse_resposta(texto)
+    resultado["usage"] = _usage(msg, model)
+    return resultado
+
+
+def _parse_resposta(texto: str) -> dict:
+    """Extrai {reply, sugestao_conteudo, sugestao_arquivos, demonstracao} do JSON."""
+    import json
+
+    from app.services import skill_arquivo_service
+
+    reply, sugestao, demo, arquivos = texto, None, None, None
     try:
         ini, fim = texto.find("{"), texto.rfind("}")
         if ini != -1 and fim != -1:
@@ -216,10 +303,19 @@ async def chat(conteudo: str, mensagens: list[dict], api_key: str = "", model: s
             reply = str(dados.get("reply") or "").strip() or texto
             sug = dados.get("sugestao_conteudo")
             sugestao = sug if isinstance(sug, str) and sug.strip() else None
+            dm = dados.get("demonstracao")
+            demo = dm if isinstance(dm, str) and dm.strip() else None
+            arqs = dados.get("sugestao_arquivos")
+            if isinstance(arqs, list):
+                arquivos = skill_arquivo_service.normalizar(arqs) or None
     except (json.JSONDecodeError, ValueError):
         pass
-
-    return {"reply": reply, "sugestao_conteudo": sugestao, "usage": _usage(msg, model)}
+    return {
+        "reply": reply,
+        "sugestao_conteudo": sugestao,
+        "sugestao_arquivos": arquivos,
+        "demonstracao": demo,
+    }
 
 
 def _usage(msg, model: str) -> dict:

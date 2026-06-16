@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-5"
     skills_dir: str = "/skills"
+    agents_dir: str = "/agents"
+    commands_dir: str = "/commands"
     plugins_dir: str = "/plugins"
     desktop_skills_dir: str = "/desktop-skills"
     claude_stats_path: str = "/claude-stats.json"

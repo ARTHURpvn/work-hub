@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/kit"
 import { isLate, ORIGENS } from "@/lib/domain"
 import { copyText } from "@/lib/utils"
+import { useTaskModalStore } from "@/store/taskModalStore"
 import { useCreateProjeto, useProjetos, useUpdateProjeto } from "@/hooks/useProjetos"
 import { useDeleteCredencial, useUpsertCredencial } from "@/hooks/useCredencial"
 import { useCreateTarefa, useTarefas } from "@/hooks/useTarefas"
@@ -226,6 +227,7 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
   const upsertCred = useUpsertCredencial()
   const delCred = useDeleteCredencial()
   const createTarefa = useCreateTarefa()
+  const openTask = useTaskModalStore((s) => s.open)
 
   const [edit, setEdit] = useState(startEdit)
   const [reveal, setReveal] = useState<{ usuario: string; senha: string } | null>(null)
@@ -451,7 +453,12 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
                 onClick={() =>
                   createTarefa.mutate(
                     { titulo: "Nova tarefa", projeto_id: projeto.id },
-                    { onSuccess: () => toast.success("Tarefa criada") }
+                    {
+                      onSuccess: (t) => {
+                        toast.success("Tarefa criada")
+                        openTask(t.id)
+                      },
+                    }
                   )
                 }
               >
@@ -460,7 +467,7 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
             </div>
             {projTasks.length ? (
               projTasks.map((t) => (
-                <div key={t.id} className="lrow" style={{ padding: "9px 4px" }}>
+                <div key={t.id} className="lrow click" style={{ padding: "9px 4px" }} onClick={() => openTask(t.id)}>
                   <StatusPill status={t.status} late={isLate(t)} />
                   <span style={{ flex: 1, fontWeight: 600 }} className="truncate">
                     {t.titulo}

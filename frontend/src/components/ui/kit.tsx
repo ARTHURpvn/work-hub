@@ -1,9 +1,13 @@
-import type {
-  ButtonHTMLAttributes,
-  InputHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
+import {
+  cloneElement,
+  isValidElement,
+  useId,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
 } from "react"
 import { origemMeta, statusMeta } from "@/lib/domain"
 import { Icon, type IconName } from "./Icon"
@@ -46,11 +50,34 @@ export function IconButton({ name, size = 18, className, ...rest }: IconButtonPr
 }
 
 /* ---------- Field / inputs ---------- */
-export function Field({ label, hint, children }: { label?: ReactNode; hint?: ReactNode; children: ReactNode }) {
+export function Field({
+  label,
+  hint,
+  htmlFor,
+  children,
+}: {
+  label?: ReactNode
+  hint?: ReactNode
+  htmlFor?: string
+  children: ReactNode
+}) {
+  const autoId = useId()
+  // Associa o label ao controle: se o filho for um único elemento sem `id`,
+  // injeta um `id` gerado e aponta o <label htmlFor> para ele. Assim leitores
+  // de tela anunciam o rótulo e clicar no label foca o campo.
+  let control = children
+  let id = htmlFor
+  if (!id && isValidElement(children)) {
+    const childId = (children.props as { id?: string }).id
+    id = childId ?? autoId
+    if (!childId) {
+      control = cloneElement(children as ReactElement<{ id?: string }>, { id })
+    }
+  }
   return (
     <div className="field">
-      {label && <label>{label}</label>}
-      {children}
+      {label && <label htmlFor={id}>{label}</label>}
+      {control}
       {hint && <span className="hint">{hint}</span>}
     </div>
   )
@@ -73,9 +100,16 @@ export function Select({ children, className, ...rest }: SelectHTMLAttributes<HT
 }
 
 /* ---------- Check ---------- */
-export function Check({ on, onClick }: { on: boolean; onClick: () => void }) {
+export function Check({ on, onClick, label }: { on: boolean; onClick: () => void; label?: string }) {
   return (
-    <button type="button" className={cls("check", on && "on")} onClick={onClick}>
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={on}
+      aria-label={label}
+      className={cls("check", on && "on")}
+      onClick={onClick}
+    >
       <Icon name="check" size={12} />
     </button>
   )
