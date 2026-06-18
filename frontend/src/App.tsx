@@ -9,6 +9,7 @@ import { Hooks } from "@/pages/Hooks"
 import { Kanban } from "@/pages/Kanban"
 import { Login } from "@/pages/Login"
 import { McpServers } from "@/pages/McpServers"
+import { McpStore } from "@/pages/McpStore"
 import { Plugins } from "@/pages/Plugins"
 import { Projetos } from "@/pages/Projetos"
 import { Rotinas } from "@/pages/Rotinas"
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="skills/:id" element={<SkillDetail />} />
         <Route path="subagents" element={<Subagents />} />
         <Route path="mcp" element={<McpServers />} />
+        <Route path="mcp-store" element={<McpStore />} />
         <Route path="hooks" element={<Hooks />} />
         <Route path="commands" element={<Commands />} />
         <Route path="plugins" element={<Plugins />} />

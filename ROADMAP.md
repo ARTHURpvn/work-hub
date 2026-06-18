@@ -39,14 +39,17 @@ Fatiado (cada fatia = um ciclo `/feature`):
 - **v2d — Commands** ✅: slash commands → `commands/<name>.md` no bundle + espelho
   em `~/.claude/commands`. O editor de Plugin reúne as 5 peças.
 
-## v3 — MCP Store
+## v3 — MCP Store ✅ (entregue)
 - Browse/busca do **registry oficial** (`registry.modelcontextprotocol.io`,
-  `GET /v0.1/servers`).
-- Opção leve primeiro: listar + copiar `claude mcp add`/snippet `.mcp.json`.
-- Opção integrada depois: montar `~/.claude.json` rw + merge do bloco
-  `mcpServers` (segredos cifrados, nunca exportar valores reais).
-- Segurança: MCP executa código local → mostrar source/repo, transporte e env
-  obrigatórios, confirmar antes.
+  `GET /v0/servers?search=`) via backend-proxy (`mcp_store_service`: timeout 10s +
+  cache TTL 5min + dedup por nome).
+- **Opção leve (entregue):** página **MCP Store** lista/detalha servers (origem,
+  transporte, pacote npm/pypi/oci/remote, env exigidos) e gera `claude mcp add` +
+  snippet `.mcp.json` para copiar. Importação pro `mcp_server` re-busca no registry
+  (fonte da verdade), cifra segredos exigidos (vazios) e barra colisão (409).
+- **Opção integrada (futuro):** merge automático no `~/.claude.json`.
+- Segurança: workhub nunca executa; host fixo (sem SSRF), httpx sem
+  follow-redirects, endpoints sob auth, banner de aviso na tela.
 
 ## v4 — Advisor de MCP (capstone)
 Motor de recomendação que cruza **store × skills/plugins × o seu código**:
