@@ -88,7 +88,7 @@ export function McpStore() {
                   {s.package_kind && <span className="tag tag-otavio"><span className="dot" /> {s.package_kind}</span>}
                 </div>
                 <div className="t-meta mono truncate" style={{ marginBottom: 6 }}>{s.name}</div>
-                <div className="sub" style={{ margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                <div className="sub" style={{ margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
                   {s.description || "Sem descrição."}
                 </div>
               </div>
