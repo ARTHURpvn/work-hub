@@ -3,7 +3,6 @@ import { apiLogout } from "@/api/auth"
 import { Icon, type IconName } from "@/components/ui/Icon"
 import { useProjetos } from "@/hooks/useProjetos"
 import { useSkills } from "@/hooks/useSkills"
-import { useTarefas } from "@/hooks/useTarefas"
 import { useVpsList } from "@/hooks/useVps"
 import { useAuthStore } from "@/store/authStore"
 
@@ -11,23 +10,40 @@ interface NavEntry {
   to: string
   label: string
   icon: IconName
-  key: "projetos" | "tarefas" | "vps" | "skills" | null
+  key: "projetos" | "vps" | "skills" | null
   end?: boolean
 }
 
-const NAV: NavEntry[] = [
-  { to: "/", label: "Dashboard", icon: "dashboard", key: null, end: true },
-  { to: "/projetos", label: "Projetos", icon: "folder", key: "projetos" },
-  { to: "/tarefas", label: "Tarefas", icon: "check_list", key: "tarefas" },
-  { to: "/kanban", label: "Kanban", icon: "board", key: null },
-  { to: "/vps", label: "VPS", icon: "server", key: "vps" },
-  { to: "/calendario", label: "Calendário", icon: "calendar", key: null },
-  { to: "/skills", label: "Skills", icon: "sparkle", key: "skills" },
-  { to: "/subagents", label: "Subagents", icon: "bot", key: null },
-  { to: "/mcp", label: "MCP", icon: "link", key: null },
-  { to: "/hooks", label: "Hooks", icon: "clock", key: null },
-  { to: "/commands", label: "Commands", icon: "send", key: null },
-  { to: "/plugins", label: "Plugins", icon: "archive", key: null },
+interface NavGroup {
+  title?: string
+  items: NavEntry[]
+}
+
+const GROUPS: NavGroup[] = [
+  {
+    items: [
+      { to: "/", label: "Dashboard", icon: "dashboard", key: null, end: true },
+      { to: "/projetos", label: "Projetos", icon: "folder", key: "projetos" },
+      { to: "/calendario", label: "Calendário", icon: "calendar", key: null },
+      { to: "/vps", label: "VPS", icon: "server", key: "vps" },
+    ],
+  },
+  {
+    title: "Claude",
+    items: [
+      { to: "/skills", label: "Skills", icon: "sparkle", key: "skills" },
+      { to: "/subagents", label: "Subagents", icon: "bot", key: null },
+      { to: "/mcp", label: "MCP", icon: "link", key: null },
+      { to: "/mcp-store", label: "MCP Store", icon: "search", key: null },
+      { to: "/hooks", label: "Hooks", icon: "clock", key: null },
+      { to: "/commands", label: "Commands", icon: "send", key: null },
+      { to: "/plugins", label: "Plugins", icon: "archive", key: null },
+    ],
+  },
+  {
+    title: "Automação",
+    items: [{ to: "/rotinas", label: "Rotinas", icon: "refresh", key: null }],
+  },
 ]
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -35,13 +51,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const clearAuth = useAuthStore((s) => s.clearAuth)
 
   const { data: projetos } = useProjetos()
-  const { data: tarefas } = useTarefas()
   const { data: vps } = useVpsList()
   const { data: skills } = useSkills()
 
   const counts: Record<string, number> = {
     projetos: (projetos ?? []).filter((p) => !p.arquivado).length,
-    tarefas: (tarefas ?? []).filter((t) => t.status !== "Concluido").length,
     vps: (vps ?? []).length,
     skills: (skills ?? []).length,
   }
@@ -62,37 +76,28 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="nav">
-        {NAV.map((n) => {
-          const c = n.key ? counts[n.key] : 0
-          return (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.end}
-              onClick={onNavigate}
-              className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
-            >
-              <Icon name={n.icon} />
-              <span>{n.label}</span>
-              {c ? <span className="badge">{c}</span> : null}
-            </NavLink>
-          )
-        })}
-
-        <NavLink
-          to="/rotinas"
-          onClick={onNavigate}
-          className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
-        >
-          <Icon name="clock" />
-          <span>Rotinas</span>
-        </NavLink>
-
-        <div className="nav-sep" />
-        <div className="nav-item disabled">
-          <Icon name="bot" />
-          <span>Agentes</span>
-        </div>
+        {GROUPS.map((g, gi) => (
+          <div key={g.title ?? gi} className="nav-group">
+            {gi > 0 && <div className="nav-sep" />}
+            {g.title && <div className="nav-label">{g.title}</div>}
+            {g.items.map((n) => {
+              const c = n.key ? counts[n.key] : 0
+              return (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  end={n.end}
+                  onClick={onNavigate}
+                  className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
+                >
+                  <Icon name={n.icon} />
+                  <span>{n.label}</span>
+                  {c ? <span className="badge">{c}</span> : null}
+                </NavLink>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="nav-foot">

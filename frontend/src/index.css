@@ -157,6 +157,11 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; color: var(
 }
 .nav-item.active .badge { background: var(--accent); color: var(--accent-text); }
 .nav-sep { height: 1px; background: var(--border); margin: 10px 8px; }
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); padding: 6px 12px 4px;
+}
 .nav-foot { margin-top: auto; }
 
 /* main */
