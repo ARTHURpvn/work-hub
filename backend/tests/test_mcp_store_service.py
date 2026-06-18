@@ -79,3 +79,27 @@ def test_env_secret_por_heuristica_e_flag() -> None:
 
 def test_normalizar_sem_nome_retorna_none() -> None:
     assert store._normalizar({"server": {}}) is None
+
+
+def test_docs_links_repo_e_pacote() -> None:
+    item = {"server": {
+        "name": "io.github.upstash/context7", "version": "1.0.0",
+        "packages": [{"registryType": "npm", "identifier": "@upstash/context7-mcp",
+                      "transport": {"type": "stdio"}}],
+        "repository": {"url": "https://github.com/upstash/context7"},
+    }}
+    n = store._normalizar(item)
+    assert n["package_id"] == "@upstash/context7-mcp"
+    labels = {d["label"]: d["url"] for d in n["docs"]}
+    assert labels["Repositório"] == "https://github.com/upstash/context7"
+    assert labels["npm"] == "https://www.npmjs.com/package/@upstash/context7-mcp"
+
+
+def test_docs_links_pypi() -> None:
+    n = store._normalizar({"server": {
+        "name": "x/serena", "version": "1.0.0",
+        "packages": [{"registryType": "pypi", "identifier": "serena-agent",
+                      "transport": {"type": "stdio"}}],
+    }})
+    labels = {d["label"]: d["url"] for d in n["docs"]}
+    assert labels["PyPI"] == "https://pypi.org/project/serena-agent/"

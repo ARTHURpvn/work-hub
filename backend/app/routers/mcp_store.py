@@ -5,22 +5,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
 from app.deps import get_current_user
-from app.schemas.mcp_store import ImportRequest, ImportResult, StoreServer
+from app.schemas.mcp_store import ImportRequest, ImportResult, PackageDoc, SearchResponse
 from app.services import mcp_service, mcp_store_service
 
 router = APIRouter()
 
 
-@router.get("/search", response_model=list[StoreServer])
+@router.get("/search", response_model=SearchResponse)
 async def search_store(
     q: str = Query("", description="palavra-chave de busca"),
-    limit: int = Query(20, ge=1, le=50),
+    limit: int = Query(30, ge=1, le=50),
+    cursor: str | None = Query(None, description="cursor de paginação"),
     _user: str = Depends(get_current_user),
-) -> list[StoreServer]:
+) -> SearchResponse:
     try:
-        return await mcp_store_service.buscar(q, limit)  # type: ignore[return-value]
+        return await mcp_store_service.buscar(q, limit, cursor)  # type: ignore[return-value]
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+
+@router.get("/docs", response_model=PackageDoc)
+async def package_docs(
+    kind: str = Query(..., description="npm | pypi"),
+    id: str = Query(..., description="identificador do pacote"),
+    _user: str = Depends(get_current_user),
+) -> PackageDoc:
+    if kind not in ("npm", "pypi"):
+        return PackageDoc()
+    return await mcp_store_service.pacote_doc(kind, id)  # type: ignore[return-value]
 
 
 @router.post("/import", response_model=ImportResult, status_code=status.HTTP_201_CREATED)

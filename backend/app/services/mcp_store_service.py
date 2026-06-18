@@ -79,6 +79,7 @@ def _normalizar(item: dict) -> dict | None:
     args: list[str] = []
     url = None
     package_kind = None
+    package_id = None
     env_required: list[dict] = []
 
     pkgs = s.get("packages") or []
@@ -88,6 +89,7 @@ def _normalizar(item: dict) -> dict | None:
         kind = pkg.get("registryType")
         identifier = pkg.get("identifier") or ""
         package_kind = kind
+        package_id = identifier
         command = _RUNTIME.get(kind, kind)
         args = _pkg_args(pkg, identifier, kind)
         transport = (pkg.get("transport") or {}).get("type") or "stdio"
@@ -115,10 +117,24 @@ def _normalizar(item: dict) -> dict | None:
         "url": url,
         "env_required": env_required,
         "source_url": source_url,
+        "package_id": package_id,
     }
     norm["install_command"] = _montar_install(norm)
     norm["mcp_json"] = _montar_mcp_json(norm)
+    norm["docs"] = _docs_links(source_url, package_kind, package_id)
     return norm
+
+
+def _docs_links(source_url: str | None, kind: str | None, identifier: str | None) -> list[dict]:
+    """Links de documentação: repositório + página do pacote (npm/PyPI)."""
+    docs: list[dict] = []
+    if source_url:
+        docs.append({"label": "Repositório", "url": source_url})
+    if kind == "npm" and identifier:
+        docs.append({"label": "npm", "url": f"https://www.npmjs.com/package/{identifier}"})
+    elif kind == "pypi" and identifier:
+        docs.append({"label": "PyPI", "url": f"https://pypi.org/project/{identifier}/"})
+    return docs
 
 
 def _montar_install(n: dict) -> str:
@@ -151,9 +167,12 @@ def _montar_mcp_json(n: dict) -> dict:
     return {"mcpServers": {local: bloco}}
 
 
-async def buscar(q: str, limit: int = 20) -> list[dict]:
-    """Busca servers no registro oficial (com cache + timeout). Lança ValueError se upstream falhar."""
-    chave = f"{q.strip().lower()}::{limit}"
+async def buscar(q: str, limit: int = 30, cursor: str | None = None) -> dict:
+    """Busca servers no registro oficial (cache + timeout + paginação por cursor).
+
+    Devolve {"servers": [...], "next_cursor": str|None}. Lança ValueError se upstream falhar.
+    """
+    chave = f"{q.strip().lower()}::{limit}::{cursor or ''}"
     agora = time.monotonic()
     cached = _cache.get(chave)
     if cached and cached[0] > agora:
@@ -162,6 +181,8 @@ async def buscar(q: str, limit: int = 20) -> list[dict]:
     params = {"limit": str(limit)}
     if q.strip():
         params["search"] = q.strip()
+    if cursor:
+        params["cursor"] = cursor
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT, headers={"User-Agent": "workhub-mcp-store"}) as client:
             resp = await client.get(f"{BASE_URL}/v0/servers", params=params)
@@ -180,15 +201,41 @@ async def buscar(q: str, limit: int = 20) -> list[dict]:
         if n and n["name"] not in vistos:
             vistos.add(n["name"])
             norm.append(n)
-    _cache[chave] = (agora + _TTL_S, norm)
-    return norm
+    resultado = {"servers": norm, "next_cursor": (data.get("metadata") or {}).get("nextCursor")}
+    _cache[chave] = (agora + _TTL_S, resultado)
+    return resultado
 
 
 async def detalhar(name: str) -> dict | None:
     """Re-busca um server por nome exato no registry (fonte da verdade para importação)."""
-    candidatos = await buscar(name, limit=50)
-    exatos = [c for c in candidatos if c["name"] == name]
-    if exatos:
-        # versão mais recente: o registry já devolve isLatest primeiro; pega o 1º exato
-        return exatos[0]
-    return None
+    res = await buscar(name, limit=50)
+    exatos = [c for c in res["servers"] if c["name"] == name]
+    return exatos[0] if exatos else None
+
+
+async def pacote_doc(kind: str, identifier: str) -> dict:
+    """Busca descrição completa + README/homepage do pacote no npm/PyPI (sob demanda)."""
+    chave = f"doc::{kind}::{identifier}"
+    agora = time.monotonic()
+    cached = _cache.get(chave)
+    if cached and cached[0] > agora:
+        return cached[1]  # type: ignore[return-value]
+
+    out: dict = {"description": None, "readme": None, "homepage": None}
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=True,
+                                     headers={"User-Agent": "workhub-mcp-store"}) as client:
+            if kind == "npm":
+                d = (await client.get(f"https://registry.npmjs.org/{identifier}")).json()
+                out["description"] = d.get("description")
+                out["homepage"] = d.get("homepage")
+                out["readme"] = (d.get("readme") or "")[:4000] or None
+            elif kind == "pypi":
+                info = (await client.get(f"https://pypi.org/pypi/{identifier}/json")).json().get("info", {})
+                out["description"] = info.get("summary")
+                out["homepage"] = info.get("home_page") or (info.get("project_urls") or {}).get("Homepage")
+                out["readme"] = (info.get("description") or "")[:4000] or None
+    except (httpx.HTTPError, ValueError):
+        pass  # doc é best-effort; sem ela o usuário ainda tem os links
+    _cache[chave] = (agora + _TTL_S * 2, out)
+    return out
