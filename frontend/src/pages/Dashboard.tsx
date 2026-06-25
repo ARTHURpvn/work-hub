@@ -3,12 +3,20 @@ import { Icon, type IconName } from "@/components/ui/Icon"
 import { Button, Empty, OriginTag, Progress, StatusPill } from "@/components/ui/kit"
 import { dueLabel, fmtLong, STATUSES, statusMeta, todayISO } from "@/lib/domain"
 import { useDashboard } from "@/hooks/useDashboard"
+import { useDonos } from "@/hooks/useDonos"
+import { useFerramentas } from "@/hooks/useFerramentas"
+import { useProjetos } from "@/hooks/useProjetos"
+import { useVpsList } from "@/hooks/useVps"
 import { useTaskModalStore } from "@/store/taskModalStore"
 
 export function Dashboard() {
   const navigate = useNavigate()
   const openTask = useTaskModalStore((s) => s.open)
   const { data, isLoading } = useDashboard()
+  const { data: donos } = useDonos()
+  const { data: vps } = useVpsList()
+  const { data: ferramentas } = useFerramentas()
+  const { data: listaProjetos } = useProjetos()
 
   if (isLoading || !data) {
     return (
@@ -51,6 +59,10 @@ export function Dashboard() {
 
   const maxStatus = Math.max(1, ...STATUSES.map((s) => tarefas.por_status[s.id] ?? 0))
 
+  const semVps = (listaProjetos ?? []).filter((p) => !p.arquivado && !p.vps_id).length
+  const donosList = (donos ?? []).filter((d) => d.projetos_count > 0)
+  const maxDono = Math.max(1, ...donosList.map((d) => d.projetos_count))
+
   const kpi = (lbl: string, num: number, icon: IconName, alert?: boolean) => (
     <div className="card kpi">
       <div className="lbl">
@@ -75,10 +87,17 @@ export function Dashboard() {
       </div>
 
       <div className="grid g-kpi" style={{ marginBottom: 18 }}>
-        {kpi("Projetos ativos", projetos.ativos, "folder")}
+        {kpi("Projetos ativos", data.projetos.ativos, "folder")}
         {kpi("Tarefas abertas", abertas, "check_list")}
         {kpi("Vencidas", tarefas.vencidas, "alert", true)}
         {kpi("Próximos 7 dias", tarefas.proximas_7_dias, "clock")}
+      </div>
+
+      <div className="grid g-kpi" style={{ marginBottom: 18 }}>
+        {kpi("VPS", (vps ?? []).length, "server")}
+        {kpi("Donos", (donos ?? []).length, "user")}
+        {kpi("Ferramentas", (ferramentas ?? []).length, "key")}
+        {kpi("Projetos sem VPS", semVps, "alert", true)}
       </div>
 
       <div className="split">
@@ -145,6 +164,32 @@ export function Dashboard() {
             ) : (
               <p className="muted" style={{ margin: 0, padding: "8px 0" }}>
                 Nenhum projeto ativo.
+              </p>
+            )}
+          </div>
+
+          <div className="card card-pad">
+            <div className="spread" style={{ marginBottom: 14 }}>
+              <h3 className="t-h2">Projetos por dono</h3>
+              <span className="chip static" onClick={() => navigate("/donos")} style={{ cursor: "pointer" }}>
+                ver donos
+              </span>
+            </div>
+            {donosList.length ? (
+              donosList.map((d) => (
+                <div key={d.id} className="lrow click" onClick={() => navigate("/donos")} style={{ gap: 14 }}>
+                  <OriginTag origin={d.nome} />
+                  <div style={{ flex: 1 }}>
+                    <Progress pct={Math.round((d.projetos_count / maxDono) * 100)} />
+                  </div>
+                  <span className="t-meta mono" style={{ width: 92, textAlign: "right" }}>
+                    {d.projetos_count} proj · {d.vps_count} vps
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="muted" style={{ margin: 0, padding: "8px 0" }}>
+                Nenhum dono com projetos.
               </p>
             )}
           </div>
