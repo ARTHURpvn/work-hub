@@ -25,12 +25,12 @@ import { toast } from "@/store/toastStore"
 
 export function Projetos() {
   const { data: projetos } = useProjetos()
-  const createProjeto = useCreateProjeto()
 
   const [filter, setFilter] = useState<"all" | Origem>("all")
   const [showArch, setShowArch] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const [editNew, setEditNew] = useState(false)
+  const [creating, setCreating] = useState(false)
 
   const all = projetos ?? []
   let list = all.filter((p) => (showArch ? true : !p.arquivado))
@@ -38,16 +38,7 @@ export function Projetos() {
   const open = all.find((p) => p.id === openId) ?? null
 
   function create() {
-    createProjeto.mutate(
-      { nome: "Novo projeto", origem: "Pessoal" },
-      {
-        onSuccess: (p) => {
-          setOpenId(p.id)
-          setEditNew(true)
-        },
-        onError: (e) => toast.error("Erro ao criar", e instanceof Error ? e.message : undefined),
-      }
-    )
+    setCreating(true)
   }
 
   const ativos = all.filter((p) => !p.arquivado).length
@@ -122,6 +113,17 @@ export function Projetos() {
         </div>
       )}
 
+      {creating && (
+        <ProjetoCreateDrawer
+          onClose={() => setCreating(false)}
+          onCreated={(id) => {
+            setCreating(false)
+            setOpenId(id)
+            setEditNew(false)
+          }}
+        />
+      )}
+
       {open && (
         <ProjetoDrawer
           projeto={open}
@@ -133,6 +135,142 @@ export function Projetos() {
         />
       )}
     </div>
+  )
+}
+
+function VpsSelectField({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const { data: vpsList } = useVpsList()
+  const createVps = useCreateVps()
+  const [nova, setNova] = useState(false)
+  const [f, setF] = useState({ nome: "", ip: "", provedor: "" })
+
+  function criar() {
+    if (!f.ip.trim()) {
+      toast.error("IP da VPS é obrigatório")
+      return
+    }
+    createVps.mutate(
+      { nome: f.nome.trim() || null, ip: f.ip.trim(), provedor: f.provedor.trim() || null },
+      {
+        onSuccess: (v) => {
+          onChange(v.id)
+          setNova(false)
+          setF({ nome: "", ip: "", provedor: "" })
+          toast.success("VPS criada e selecionada")
+        },
+        onError: (e) => toast.error("Erro ao criar VPS", e instanceof Error ? e.message : undefined),
+      }
+    )
+  }
+
+  return (
+    <Field label="VPS">
+      <div className="row" style={{ gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <Select value={value} onChange={(e) => onChange(e.target.value)}>
+            <option value="">— nenhuma —</option>
+            {(vpsList ?? []).map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.nome || v.ip}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button type="button" size="sm" variant="ghost" icon={nova ? "x" : "plus"} onClick={() => setNova((n) => !n)}>
+          {nova ? "Cancelar" : "Nova VPS"}
+        </Button>
+      </div>
+      {nova && (
+        <div className="card card-pad" style={{ marginTop: 8 }}>
+          <div className="row wrap" style={{ gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <TextInput value={f.nome} onChange={(e) => setF((s) => ({ ...s, nome: e.target.value }))} placeholder="Nome (opcional)" />
+            </div>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <TextInput value={f.ip} onChange={(e) => setF((s) => ({ ...s, ip: e.target.value }))} placeholder="IP *" />
+            </div>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <TextInput value={f.provedor} onChange={(e) => setF((s) => ({ ...s, provedor: e.target.value }))} placeholder="Provedor (opcional)" />
+            </div>
+          </div>
+          <Button type="button" size="sm" variant="primary" icon="check" disabled={createVps.isPending} onClick={criar} style={{ marginTop: 8 }}>
+            {createVps.isPending ? "Criando…" : "Criar e selecionar"}
+          </Button>
+        </div>
+      )}
+    </Field>
+  )
+}
+
+function ProjetoCreateDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+  const createProjeto = useCreateProjeto()
+  const [form, setForm] = useState({
+    nome: "",
+    origem: ORIGENS[0]?.id ?? "Pessoal",
+    descricao: "",
+    site_url: "",
+    github_url: "",
+    vps_id: "",
+  })
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((s) => ({ ...s, [k]: v }))
+
+  function criar() {
+    if (!form.nome.trim()) {
+      toast.error("Informe o nome do projeto")
+      return
+    }
+    createProjeto.mutate(
+      {
+        nome: form.nome.trim(),
+        origem: form.origem as Origem,
+        descricao: form.descricao || null,
+        site_url: form.site_url || null,
+        github_url: form.github_url || null,
+        vps_id: form.vps_id || null,
+      },
+      {
+        onSuccess: (p) => {
+          toast.success("Projeto criado")
+          onCreated(p.id)
+        },
+        onError: (e) => toast.error("Erro ao criar", e instanceof Error ? e.message : undefined),
+      }
+    )
+  }
+
+  return (
+    <Drawer
+      title="Novo projeto"
+      onClose={onClose}
+      footer={
+        <Button variant="primary" icon="check" onClick={criar} disabled={createProjeto.isPending} style={{ marginLeft: "auto" }}>
+          {createProjeto.isPending ? "Criando…" : "Criar projeto"}
+        </Button>
+      }
+    >
+      <Field label="Nome *">
+        <TextInput value={form.nome} autoFocus onChange={(e) => set("nome", e.target.value)} placeholder="Nome do projeto" />
+      </Field>
+      <Field label="Dono / Origem">
+        <Select value={form.origem} onChange={(e) => set("origem", e.target.value as Origem)}>
+          {ORIGENS.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Descrição">
+        <TextArea value={form.descricao} onChange={(e) => set("descricao", e.target.value)} placeholder="O que é este projeto?" />
+      </Field>
+      <Field label="Link do site">
+        <TextInput value={form.site_url} onChange={(e) => set("site_url", e.target.value)} placeholder="https://" />
+      </Field>
+      <Field label="Repositório GitHub">
+        <TextInput value={form.github_url} onChange={(e) => set("github_url", e.target.value)} placeholder="https://github.com/…" />
+      </Field>
+      <VpsSelectField value={form.vps_id} onChange={(id) => set("vps_id", id)} />
+    </Drawer>
   )
 }
 
@@ -222,8 +360,6 @@ function ProjectCard({ p, onOpen }: { p: Projeto; onOpen: () => void }) {
 
 function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; startEdit: boolean; onClose: () => void }) {
   const { data: tarefas } = useTarefas()
-  const { data: vpsList } = useVpsList()
-  const createVps = useCreateVps()
   const update = useUpdateProjeto()
   const upsertCred = useUpsertCredencial()
   const delCred = useDeleteCredencial()
@@ -243,28 +379,6 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
     credPass: "",
   })
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }))
-
-  const [novaVps, setNovaVps] = useState(false)
-  const [vpsForm, setVpsForm] = useState({ nome: "", ip: "", provedor: "" })
-
-  function criarVps() {
-    if (!vpsForm.ip.trim()) {
-      toast.error("IP da VPS é obrigatório")
-      return
-    }
-    createVps.mutate(
-      { nome: vpsForm.nome.trim() || null, ip: vpsForm.ip.trim(), provedor: vpsForm.provedor.trim() || null },
-      {
-        onSuccess: (v) => {
-          set("vps_id", v.id)
-          setNovaVps(false)
-          setVpsForm({ nome: "", ip: "", provedor: "" })
-          toast.success("VPS criada e selecionada")
-        },
-        onError: (e) => toast.error("Erro ao criar VPS", e instanceof Error ? e.message : undefined),
-      }
-    )
-  }
 
   const projTasks = (tarefas ?? []).filter((t) => t.projeto_id === projeto.id)
 
@@ -362,47 +476,7 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
           <Field label="Repositório GitHub">
             <TextInput value={form.github_url} onChange={(e) => set("github_url", e.target.value)} placeholder="https://github.com/…" />
           </Field>
-          <Field label="VPS">
-            <div className="row" style={{ gap: 8 }}>
-              <div style={{ flex: 1 }}>
-                <Select value={form.vps_id} onChange={(e) => set("vps_id", e.target.value)}>
-                  <option value="">— nenhuma —</option>
-                  {(vpsList ?? []).map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.nome || v.ip}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                icon={novaVps ? "x" : "plus"}
-                onClick={() => setNovaVps((n) => !n)}
-              >
-                {novaVps ? "Cancelar" : "Nova VPS"}
-              </Button>
-            </div>
-            {novaVps && (
-              <div className="card card-pad" style={{ marginTop: 8 }}>
-                <div className="row wrap" style={{ gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 140 }}>
-                    <TextInput value={vpsForm.nome} onChange={(e) => setVpsForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Nome (opcional)" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 140 }}>
-                    <TextInput value={vpsForm.ip} onChange={(e) => setVpsForm((f) => ({ ...f, ip: e.target.value }))} placeholder="IP *" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 140 }}>
-                    <TextInput value={vpsForm.provedor} onChange={(e) => setVpsForm((f) => ({ ...f, provedor: e.target.value }))} placeholder="Provedor (opcional)" />
-                  </div>
-                </div>
-                <Button type="button" size="sm" variant="primary" icon="check" disabled={createVps.isPending} onClick={criarVps} style={{ marginTop: 8 }}>
-                  {createVps.isPending ? "Criando…" : "Criar e selecionar"}
-                </Button>
-              </div>
-            )}
-          </Field>
+          <VpsSelectField value={form.vps_id} onChange={(id) => set("vps_id", id)} />
           <div className="grid g-2" style={{ gap: 12 }}>
             <Field label="Usuário (credencial)">
               <TextInput value={form.credUser} onChange={(e) => set("credUser", e.target.value)} placeholder="admin" />
