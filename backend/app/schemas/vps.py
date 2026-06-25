@@ -58,3 +58,9 @@ class VpsComProjetos(VpsResponse):
     """VPS com os projetos hospedados nela (para o resumo 'repositórios por VPS')."""
 
     projetos: list[ProjetoResumo] = []
+
+
+class VpsProjetosUpdate(BaseModel):
+    """Define quais projetos rodam nesta VPS (seta projeto.vps_id)."""
+
+    projeto_ids: list[uuid.UUID] = []

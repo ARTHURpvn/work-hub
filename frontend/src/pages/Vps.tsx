@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom"
 import type { VpsComProjetos } from "@/api/vps"
 import { Icon } from "@/components/ui/Icon"
 import { Drawer } from "@/components/ui/Drawer"
-import { Button, Empty, Field, OriginTag, TextInput } from "@/components/ui/kit"
-import { useCreateVps, useDeleteVps, useUpdateVps, useVpsList } from "@/hooks/useVps"
+import { Button, Check, Empty, Field, OriginTag, TextInput } from "@/components/ui/kit"
+import { useProjetos } from "@/hooks/useProjetos"
+import { useCreateVps, useDeleteVps, useSetVpsProjetos, useUpdateVps, useVpsList } from "@/hooks/useVps"
 import { confirm } from "@/store/confirmStore"
 import { toast } from "@/store/toastStore"
 
@@ -133,17 +134,37 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
   const navigate = useNavigate()
   const update = useUpdateVps()
   const del = useDeleteVps()
+  const setVpsProjetos = useSetVpsProjetos()
+  const { data: projetos } = useProjetos()
   const [edit, setEdit] = useState(false)
   const [form, setForm] = useState({ nome: server.nome ?? "", ip: server.ip, provedor: server.provedor ?? "" })
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
+  const [sel, setSel] = useState<Set<string>>(new Set(server.projetos.map((p) => p.id)))
+  const toggleProj = (id: string) =>
+    setSel((s) => {
+      const n = new Set(s)
+      n.has(id) ? n.delete(id) : n.add(id)
+      return n
+    })
+
+  // projetos selecionáveis: ativos + os já vinculados a esta VPS (mesmo arquivados)
+  const selecionaveis = (projetos ?? []).filter((p) => !p.arquivado || sel.has(p.id))
 
   function save() {
     update.mutate(
       { id: server.id, data: { nome: form.nome || null, ip: form.ip, provedor: form.provedor || null } },
       {
         onSuccess: () => {
-          setEdit(false)
-          toast.success("Servidor salvo")
+          setVpsProjetos.mutate(
+            { id: server.id, projetoIds: [...sel] },
+            {
+              onSuccess: () => {
+                setEdit(false)
+                toast.success("Servidor salvo")
+              },
+              onError: (e) => toast.error("Erro ao vincular projetos", e instanceof Error ? e.message : undefined),
+            }
+          )
         },
         onError: (e) => toast.error("Erro ao salvar", e instanceof Error ? e.message : undefined),
       }
@@ -182,7 +203,7 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
       <Button variant="danger" icon="trash" onClick={handleDelete} style={{ marginRight: "auto" }}>
         Excluir
       </Button>
-      <Button variant="primary" icon="check" onClick={save} disabled={update.isPending}>
+      <Button variant="primary" icon="check" onClick={save} disabled={update.isPending || setVpsProjetos.isPending}>
         Salvar
       </Button>
     </>
@@ -207,6 +228,26 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
               <TextInput value={form.provedor} onChange={(e) => set("provedor", e.target.value)} placeholder="Hetzner, DO…" />
             </Field>
           </div>
+          <Field label={`Projetos nesta VPS (${sel.size})`} hint="Marcar move o projeto para esta VPS; desmarcar o desvincula.">
+            <div className="stack" style={{ gap: 2, maxHeight: 280, overflow: "auto" }}>
+              {selecionaveis.length === 0 && <p className="muted" style={{ fontSize: 13, margin: 0 }}>Nenhum projeto cadastrado.</p>}
+              {selecionaveis.map((p) => (
+                <div
+                  key={p.id}
+                  className="lrow click"
+                  style={{ padding: "7px 4px", gap: 9 }}
+                  onClick={() => toggleProj(p.id)}
+                >
+                  <Check on={sel.has(p.id)} onClick={() => {}} label={p.nome} />
+                  <OriginTag origin={p.origem} />
+                  <span style={{ flex: 1, fontWeight: 600 }} className="truncate">{p.nome}</span>
+                  {p.vps_id && p.vps_id !== server.id && (
+                    <span className="chip static" style={{ fontSize: 11 }}>outra VPS</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Field>
         </div>
       ) : (
         <div>

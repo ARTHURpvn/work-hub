@@ -49,5 +49,10 @@ export const vpsApi = {
     request<Vps>("/vps", { method: "POST", body: JSON.stringify(body) }),
   update: (id: string, body: VpsUpdate) =>
     request<Vps>(`/vps/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  setProjetos: (id: string, projeto_ids: string[]) =>
+    request<VpsComProjetos>(`/vps/${id}/projetos`, {
+      method: "PUT",
+      body: JSON.stringify({ projeto_ids }),
+    }),
   remove: (id: string) => request<void>(`/vps/${id}`, { method: "DELETE" }),
 }

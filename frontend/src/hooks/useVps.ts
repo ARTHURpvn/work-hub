@@ -29,6 +29,19 @@ export function useUpdateVps() {
   })
 }
 
+export function useSetVpsProjetos() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, projetoIds }: { id: string; projetoIds: string[] }) =>
+      vpsApi.setProjetos(id, projetoIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY })
+      qc.invalidateQueries({ queryKey: ["projetos"] })
+      qc.invalidateQueries({ queryKey: ["dashboard"] })
+    },
+  })
+}
+
 export function useDeleteVps() {
   const qc = useQueryClient()
   return useMutation({

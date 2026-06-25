@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
 from app.deps import get_current_user
-from app.schemas.vps import VpsComProjetos, VpsCreate, VpsResponse, VpsUpdate
+from app.schemas.vps import VpsComProjetos, VpsCreate, VpsProjetosUpdate, VpsResponse, VpsUpdate
 from app.services import vps_service
 
 router = APIRouter()
@@ -56,6 +56,25 @@ async def update_vps(
     vps = await vps_service.update_vps(session, vps, body)
     await session.commit()
     return VpsResponse.model_validate(vps)
+
+
+@router.put("/{vps_id}/projetos", response_model=VpsComProjetos)
+async def set_vps_projetos(
+    vps_id: uuid.UUID,
+    body: VpsProjetosUpdate,
+    _user: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> VpsComProjetos:
+    vps = await vps_service.get_vps(session, vps_id)
+    if vps is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="VPS não encontrada")
+    try:
+        await vps_service.set_projetos(session, vps_id, body.projeto_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    await session.commit()
+    vps = await vps_service.get_vps(session, vps_id)
+    return VpsComProjetos.model_validate(vps)
 
 
 @router.delete("/{vps_id}", status_code=status.HTTP_204_NO_CONTENT)

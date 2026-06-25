@@ -20,7 +20,7 @@ import { useTaskModalStore } from "@/store/taskModalStore"
 import { useCreateProjeto, useProjetos, useUpdateProjeto } from "@/hooks/useProjetos"
 import { useDeleteCredencial, useUpsertCredencial } from "@/hooks/useCredencial"
 import { useCreateTarefa, useTarefas } from "@/hooks/useTarefas"
-import { useVpsList } from "@/hooks/useVps"
+import { useCreateVps, useVpsList } from "@/hooks/useVps"
 import { toast } from "@/store/toastStore"
 
 export function Projetos() {
@@ -223,6 +223,7 @@ function ProjectCard({ p, onOpen }: { p: Projeto; onOpen: () => void }) {
 function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; startEdit: boolean; onClose: () => void }) {
   const { data: tarefas } = useTarefas()
   const { data: vpsList } = useVpsList()
+  const createVps = useCreateVps()
   const update = useUpdateProjeto()
   const upsertCred = useUpsertCredencial()
   const delCred = useDeleteCredencial()
@@ -242,6 +243,28 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
     credPass: "",
   })
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }))
+
+  const [novaVps, setNovaVps] = useState(false)
+  const [vpsForm, setVpsForm] = useState({ nome: "", ip: "", provedor: "" })
+
+  function criarVps() {
+    if (!vpsForm.ip.trim()) {
+      toast.error("IP da VPS é obrigatório")
+      return
+    }
+    createVps.mutate(
+      { nome: vpsForm.nome.trim() || null, ip: vpsForm.ip.trim(), provedor: vpsForm.provedor.trim() || null },
+      {
+        onSuccess: (v) => {
+          set("vps_id", v.id)
+          setNovaVps(false)
+          setVpsForm({ nome: "", ip: "", provedor: "" })
+          toast.success("VPS criada e selecionada")
+        },
+        onError: (e) => toast.error("Erro ao criar VPS", e instanceof Error ? e.message : undefined),
+      }
+    )
+  }
 
   const projTasks = (tarefas ?? []).filter((t) => t.projeto_id === projeto.id)
 
@@ -340,14 +363,45 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
             <TextInput value={form.github_url} onChange={(e) => set("github_url", e.target.value)} placeholder="https://github.com/…" />
           </Field>
           <Field label="VPS">
-            <Select value={form.vps_id} onChange={(e) => set("vps_id", e.target.value)}>
-              <option value="">— nenhuma —</option>
-              {(vpsList ?? []).map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.nome || v.ip}
-                </option>
-              ))}
-            </Select>
+            <div className="row" style={{ gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <Select value={form.vps_id} onChange={(e) => set("vps_id", e.target.value)}>
+                  <option value="">— nenhuma —</option>
+                  {(vpsList ?? []).map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.nome || v.ip}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                icon={novaVps ? "x" : "plus"}
+                onClick={() => setNovaVps((n) => !n)}
+              >
+                {novaVps ? "Cancelar" : "Nova VPS"}
+              </Button>
+            </div>
+            {novaVps && (
+              <div className="card card-pad" style={{ marginTop: 8 }}>
+                <div className="row wrap" style={{ gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 140 }}>
+                    <TextInput value={vpsForm.nome} onChange={(e) => setVpsForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Nome (opcional)" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 140 }}>
+                    <TextInput value={vpsForm.ip} onChange={(e) => setVpsForm((f) => ({ ...f, ip: e.target.value }))} placeholder="IP *" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 140 }}>
+                    <TextInput value={vpsForm.provedor} onChange={(e) => setVpsForm((f) => ({ ...f, provedor: e.target.value }))} placeholder="Provedor (opcional)" />
+                  </div>
+                </div>
+                <Button type="button" size="sm" variant="primary" icon="check" disabled={createVps.isPending} onClick={criarVps} style={{ marginTop: 8 }}>
+                  {createVps.isPending ? "Criando…" : "Criar e selecionar"}
+                </Button>
+              </div>
+            )}
           </Field>
           <div className="grid g-2" style={{ gap: 12 }}>
             <Field label="Usuário (credencial)">
