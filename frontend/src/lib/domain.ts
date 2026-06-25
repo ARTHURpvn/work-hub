@@ -16,7 +16,10 @@ export const ORIGENS: OrigemMeta[] = [
 ]
 
 export function origemMeta(id: string | null | undefined): OrigemMeta {
-  return ORIGENS.find((o) => o.id === id) ?? ORIGENS[0]
+  const found = ORIGENS.find((o) => o.id === id)
+  if (found) return found
+  // dono dinâmico (criado pelo usuário): usa o próprio nome + cor neutra
+  return { id: (id || "—") as Origem, label: id || "—", cls: "tag-pess" }
 }
 
 /* ---------- Status (tarefa) ---------- */

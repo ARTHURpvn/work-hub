@@ -14,17 +14,19 @@ import {
   TextArea,
   TextInput,
 } from "@/components/ui/kit"
-import { isLate, ORIGENS } from "@/lib/domain"
+import { isLate } from "@/lib/domain"
 import { copyText } from "@/lib/utils"
 import { useTaskModalStore } from "@/store/taskModalStore"
 import { useCreateProjeto, useProjetos, useUpdateProjeto } from "@/hooks/useProjetos"
 import { useDeleteCredencial, useUpsertCredencial } from "@/hooks/useCredencial"
 import { useCreateTarefa, useTarefas } from "@/hooks/useTarefas"
+import { useDonos } from "@/hooks/useDonos"
 import { useCreateVps, useVpsList } from "@/hooks/useVps"
 import { toast } from "@/store/toastStore"
 
 export function Projetos() {
   const { data: projetos } = useProjetos()
+  const { data: donos } = useDonos()
 
   const [filter, setFilter] = useState<"all" | Origem>("all")
   const [showArch, setShowArch] = useState(false)
@@ -64,9 +66,9 @@ export function Projetos() {
             <span className={"chip" + (filter === "all" ? " on" : "")} onClick={() => setFilter("all")}>
               Todos
             </span>
-            {ORIGENS.map((o) => (
-              <span key={o.id} className={"chip" + (filter === o.id ? " on" : "")} onClick={() => setFilter(o.id)}>
-                {o.label}
+            {(donos ?? []).map((o) => (
+              <span key={o.id} className={"chip" + (filter === o.nome ? " on" : "")} onClick={() => setFilter(o.nome)}>
+                {o.nome}
               </span>
             ))}
             <span
@@ -204,9 +206,10 @@ function VpsSelectField({ value, onChange }: { value: string; onChange: (id: str
 
 function ProjetoCreateDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const createProjeto = useCreateProjeto()
+  const { data: donos } = useDonos()
   const [form, setForm] = useState({
     nome: "",
-    origem: ORIGENS[0]?.id ?? "Pessoal",
+    origem: "Pessoal",
     descricao: "",
     site_url: "",
     github_url: "",
@@ -253,9 +256,9 @@ function ProjetoCreateDrawer({ onClose, onCreated }: { onClose: () => void; onCr
       </Field>
       <Field label="Dono / Origem">
         <Select value={form.origem} onChange={(e) => set("origem", e.target.value as Origem)}>
-          {ORIGENS.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
+          {(donos ?? []).map((o) => (
+            <option key={o.id} value={o.nome}>
+              {o.nome}
             </option>
           ))}
         </Select>
@@ -360,6 +363,7 @@ function ProjectCard({ p, onOpen }: { p: Projeto; onOpen: () => void }) {
 
 function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; startEdit: boolean; onClose: () => void }) {
   const { data: tarefas } = useTarefas()
+  const { data: donos } = useDonos()
   const update = useUpdateProjeto()
   const upsertCred = useUpsertCredencial()
   const delCred = useDeleteCredencial()
@@ -460,9 +464,9 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
           </Field>
           <Field label="Dono / Origem">
             <Select value={form.origem} onChange={(e) => set("origem", e.target.value as Origem)}>
-              {ORIGENS.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
+              {(donos ?? []).map((o) => (
+                <option key={o.id} value={o.nome}>
+                  {o.nome}
                 </option>
               ))}
             </Select>

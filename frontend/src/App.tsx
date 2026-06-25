@@ -5,6 +5,7 @@ import { Calendario } from "@/pages/Calendario"
 import { Commands } from "@/pages/Commands"
 import { Configuracoes } from "@/pages/Configuracoes"
 import { Dashboard } from "@/pages/Dashboard"
+import { Donos } from "@/pages/Donos"
 import { Hooks } from "@/pages/Hooks"
 import { Kanban } from "@/pages/Kanban"
 import { Login } from "@/pages/Login"
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="tarefas" element={<Tarefas />} />
         <Route path="kanban" element={<Kanban />} />
         <Route path="vps" element={<Vps />} />
+        <Route path="donos" element={<Donos />} />
         <Route path="calendario" element={<Calendario />} />
         <Route path="skills" element={<Skills />} />
         <Route path="skills/:id" element={<SkillDetail />} />

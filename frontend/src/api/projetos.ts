@@ -1,5 +1,6 @@
 import { onUnauthorized } from "@/lib/session"
-export type Origem = "Otavio" | "Titan" | "Freelas" | "Pessoal"
+// dono dinâmico: origem é texto livre (validado contra a tabela `dono` no back)
+export type Origem = string
 
 export interface Membro {
   id: string

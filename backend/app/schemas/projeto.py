@@ -1,14 +1,14 @@
 import ipaddress
 import uuid
 from datetime import datetime
-from typing import Literal
 
 from pydantic import BaseModel, field_validator, model_validator
 
 from app.schemas.vps import VpsResponse
 
 
-Origem = Literal["Otavio", "Titan", "Freelas", "Pessoal"]
+# origem agora é texto livre validado contra a tabela `dono` (não mais enum fixo)
+Origem = str
 
 
 def _validate_url(v: str | None) -> str | None:

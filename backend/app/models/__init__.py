@@ -2,6 +2,7 @@ from app.models.agente import Agente, Job, JobLog
 from app.models.calendario import IntegracaoCalendario, SyncLog
 from app.models.configuracao import Configuracao
 from app.models.credencial import CredencialProjeto
+from app.models.dono import Dono
 from app.models.linkedin import LinkedinPost, PromptTemplate
 from app.models.projeto import Projeto, ProjetoMembro
 from app.models.rotina import Rotina, UsoIA
@@ -24,6 +25,7 @@ __all__ = [
     "Projeto",
     "ProjetoMembro",
     "Vps",
+    "Dono",
     "CredencialProjeto",
     "Configuracao",
     "Rotina",
