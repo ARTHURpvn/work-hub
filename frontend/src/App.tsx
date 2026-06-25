@@ -6,6 +6,7 @@ import { Commands } from "@/pages/Commands"
 import { Configuracoes } from "@/pages/Configuracoes"
 import { Dashboard } from "@/pages/Dashboard"
 import { Donos } from "@/pages/Donos"
+import { Ferramentas } from "@/pages/Ferramentas"
 import { Hooks } from "@/pages/Hooks"
 import { Kanban } from "@/pages/Kanban"
 import { Login } from "@/pages/Login"
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="kanban" element={<Kanban />} />
         <Route path="vps" element={<Vps />} />
         <Route path="donos" element={<Donos />} />
+        <Route path="ferramentas" element={<Ferramentas />} />
         <Route path="calendario" element={<Calendario />} />
         <Route path="skills" element={<Skills />} />
         <Route path="skills/:id" element={<SkillDetail />} />

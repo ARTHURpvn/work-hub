@@ -27,6 +27,7 @@ const GROUPS: NavGroup[] = [
       { to: "/donos", label: "Donos", icon: "user", key: null },
       { to: "/calendario", label: "Calendário", icon: "calendar", key: null },
       { to: "/vps", label: "VPS", icon: "server", key: "vps" },
+      { to: "/ferramentas", label: "Ferramentas", icon: "key", key: null },
     ],
   },
   {
