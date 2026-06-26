@@ -17,7 +17,7 @@ export function Topbar({ onMenu, onSearch }: TopbarProps) {
       <div className="search" onClick={onSearch}>
         <Icon name="search" size={16} />
         <input
-          placeholder="Buscar projetos, tarefas…"
+          placeholder="Buscar projetos, VPS…"
           readOnly
           onFocus={onSearch}
           style={{ cursor: "pointer" }}

@@ -3,9 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { Icon } from "@/components/ui/Icon"
 import { Modal } from "@/components/ui/Modal"
 import { useProjetos } from "@/hooks/useProjetos"
-import { useTarefas } from "@/hooks/useTarefas"
 import { useVpsList } from "@/hooks/useVps"
-import { useTaskModalStore } from "@/store/taskModalStore"
 
 interface Result {
   type: string
@@ -15,9 +13,7 @@ interface Result {
 
 export function SearchPalette({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
-  const openTask = useTaskModalStore((s) => s.open)
   const { data: projetos } = useProjetos()
-  const { data: tarefas } = useTarefas()
   const { data: vps } = useVpsList()
   const [q, setQ] = useState("")
 
@@ -28,16 +24,12 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
     for (const p of projetos ?? []) {
       if (p.nome.toLowerCase().includes(ql)) r.push({ type: "Projeto", label: p.nome, act: () => navigate("/projetos") })
     }
-    for (const t of tarefas ?? []) {
-      if ((t.titulo || "").toLowerCase().includes(ql))
-        r.push({ type: "Tarefa", label: t.titulo, act: () => openTask(t.id) })
-    }
     for (const v of vps ?? []) {
       const nome = v.nome || v.ip
       if (nome.toLowerCase().includes(ql)) r.push({ type: "VPS", label: nome, act: () => navigate("/vps") })
     }
     return r.slice(0, 8)
-  }, [ql, projetos, tarefas, vps, navigate, openTask])
+  }, [ql, projetos, vps, navigate])
 
   return (
     <Modal onClose={onClose} title={undefined}>
@@ -48,7 +40,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar projetos, tarefas, VPS…"
+          placeholder="Buscar projetos, VPS…"
         />
       </div>
       {results.map((r, i) => (

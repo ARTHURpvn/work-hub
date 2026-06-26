@@ -8,18 +8,13 @@ import {
   Field,
   IconButton,
   OriginTag,
-  Progress,
   Select,
-  StatusPill,
   TextArea,
   TextInput,
 } from "@/components/ui/kit"
-import { isLate } from "@/lib/domain"
 import { copyText } from "@/lib/utils"
-import { useTaskModalStore } from "@/store/taskModalStore"
 import { useCreateProjeto, useProjetos, useUpdateProjeto } from "@/hooks/useProjetos"
 import { useDeleteCredencial, useUpsertCredencial } from "@/hooks/useCredencial"
-import { useCreateTarefa, useTarefas } from "@/hooks/useTarefas"
 import { useDonos } from "@/hooks/useDonos"
 import { useCreateVps, useVpsList } from "@/hooks/useVps"
 import { toast } from "@/store/toastStore"
@@ -278,11 +273,6 @@ function ProjetoCreateDrawer({ onClose, onCreated }: { onClose: () => void; onCr
 }
 
 function ProjectCard({ p, onOpen }: { p: Projeto; onOpen: () => void }) {
-  const { data: tarefas } = useTarefas()
-  const pt = (tarefas ?? []).filter((t) => t.projeto_id === p.id)
-  const done = pt.filter((t) => t.status === "Concluido").length
-  const pct = pt.length ? Math.round((done / pt.length) * 100) : 0
-
   return (
     <div className="card card-pad card-hover" onClick={onOpen}>
       <div className="spread" style={{ marginBottom: 12 }}>
@@ -310,15 +300,6 @@ function ProjectCard({ p, onOpen }: { p: Projeto; onOpen: () => void }) {
       >
         {p.descricao || "Sem descrição."}
       </p>
-      <div style={{ marginBottom: 12 }}>
-        <div className="spread" style={{ marginBottom: 6 }}>
-          <span className="t-meta">
-            {done}/{pt.length} tarefas
-          </span>
-          <span className="t-meta mono">{pct}%</span>
-        </div>
-        <Progress pct={pct} />
-      </div>
       <div className="row wrap" style={{ gap: 7 }}>
         {p.site_url && (
           <a
@@ -362,13 +343,10 @@ function ProjectCard({ p, onOpen }: { p: Projeto; onOpen: () => void }) {
 }
 
 function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; startEdit: boolean; onClose: () => void }) {
-  const { data: tarefas } = useTarefas()
   const { data: donos } = useDonos()
   const update = useUpdateProjeto()
   const upsertCred = useUpsertCredencial()
   const delCred = useDeleteCredencial()
-  const createTarefa = useCreateTarefa()
-  const openTask = useTaskModalStore((s) => s.open)
 
   const [edit, setEdit] = useState(startEdit)
   const [reveal, setReveal] = useState<{ usuario: string; senha: string } | null>(null)
@@ -383,8 +361,6 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
     credPass: "",
   })
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }))
-
-  const projTasks = (tarefas ?? []).filter((t) => t.projeto_id === projeto.id)
 
   function save() {
     update.mutate(
@@ -574,42 +550,6 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
               <div className="t-meta mono" style={{ marginTop: 6 }}>
                 ssh root@{projeto.vps.ip}
               </div>
-            )}
-          </div>
-          <div className="det-block" style={{ marginBottom: 0 }}>
-            <div className="spread" style={{ marginBottom: 8 }}>
-              <span className="t-label">Tarefas ({projTasks.length})</span>
-              <Button
-                size="sm"
-                icon="plus"
-                onClick={() =>
-                  createTarefa.mutate(
-                    { titulo: "Nova tarefa", projeto_id: projeto.id },
-                    {
-                      onSuccess: (t) => {
-                        toast.success("Tarefa criada")
-                        openTask(t.id)
-                      },
-                    }
-                  )
-                }
-              >
-                Add
-              </Button>
-            </div>
-            {projTasks.length ? (
-              projTasks.map((t) => (
-                <div key={t.id} className="lrow click" style={{ padding: "9px 4px" }} onClick={() => openTask(t.id)}>
-                  <StatusPill status={t.status} late={isLate(t)} />
-                  <span style={{ flex: 1, fontWeight: 600 }} className="truncate">
-                    {t.titulo}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="muted" style={{ fontSize: 13.5, margin: 0 }}>
-                Nenhuma tarefa ainda.
-              </p>
             )}
           </div>
         </div>
