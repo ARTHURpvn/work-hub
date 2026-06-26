@@ -1,11 +1,16 @@
 import { onUnauthorized } from "@/lib/session"
 
+export type CredTipo = "valor" | "email_senha"
+
 export interface Ferramenta {
   id: string
   nome: string
   times: string[]
   descricao: string | null
+  site_url: string | null
   onde_obter: string | null
+  cred_tipo: CredTipo
+  cred_email: string | null
   tem_credencial: boolean
   atualizado_em: string
 }
@@ -14,7 +19,10 @@ export interface FerramentaInput {
   nome: string
   times: string[]
   descricao?: string | null
+  site_url?: string | null
   onde_obter?: string | null
+  cred_tipo?: CredTipo
+  cred_email?: string | null
   credencial?: string | null
 }
 

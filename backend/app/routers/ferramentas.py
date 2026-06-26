@@ -43,7 +43,10 @@ async def create_ferramenta(
         nome=body.nome,
         times=body.times,
         descricao=body.descricao,
+        site_url=body.site_url,
         onde_obter=body.onde_obter,
+        cred_tipo=body.cred_tipo,
+        cred_email=body.cred_email,
         credencial=body.credencial,
     )
     await session.commit()
@@ -66,7 +69,10 @@ async def update_ferramenta(
         nome=body.nome,
         times=body.times,
         descricao=body.descricao,
+        site_url=body.site_url,
         onde_obter=body.onde_obter,
+        cred_tipo=body.cred_tipo,
+        cred_email=body.cred_email,
         credencial=body.credencial,
     )
     await session.commit()

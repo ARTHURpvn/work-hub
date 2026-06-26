@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ferramentasApi, type Ferramenta } from "@/api/ferramentas"
+import { ferramentasApi, type CredTipo, type Ferramenta } from "@/api/ferramentas"
 import { Drawer } from "@/components/ui/Drawer"
 import { Icon } from "@/components/ui/Icon"
 import { Button, Empty, Field, OriginTag, TextArea, TextInput } from "@/components/ui/kit"
@@ -51,6 +51,18 @@ export function Ferramentas() {
               </div>
               <div className="row wrap" style={{ gap: 6, marginBottom: 8 }}>
                 {f.times.length ? f.times.map((t) => <OriginTag key={t} origin={t} />) : <span className="muted" style={{ fontSize: 12 }}>sem time</span>}
+                {f.site_url && (
+                  <a
+                    href={f.site_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="tag"
+                    style={{ textDecoration: "none" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Icon name="external" size={12} /> Abrir site
+                  </a>
+                )}
               </div>
               {f.onde_obter && (
                 <div className="sub" style={{ margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
@@ -75,7 +87,10 @@ function FerramentaEditor({ ferramenta, onClose }: { ferramenta: Ferramenta | nu
   const [nome, setNome] = useState(ferramenta?.nome ?? "")
   const [times, setTimes] = useState<Set<string>>(new Set(ferramenta?.times ?? []))
   const [descricao, setDescricao] = useState(ferramenta?.descricao ?? "")
+  const [siteUrl, setSiteUrl] = useState(ferramenta?.site_url ?? "")
   const [ondeObter, setOndeObter] = useState(ferramenta?.onde_obter ?? "")
+  const [credTipo, setCredTipo] = useState<CredTipo>(ferramenta?.cred_tipo ?? "valor")
+  const [credEmail, setCredEmail] = useState(ferramenta?.cred_email ?? "")
   const [credencial, setCredencial] = useState("")
   const [credDirty, setCredDirty] = useState(false)
 
@@ -107,7 +122,10 @@ function FerramentaEditor({ ferramenta, onClose }: { ferramenta: Ferramenta | nu
       nome: nome.trim(),
       times: [...times],
       descricao: descricao || null,
+      site_url: siteUrl.trim() || null,
       onde_obter: ondeObter || null,
+      cred_tipo: credTipo,
+      cred_email: credTipo === "email_senha" ? credEmail.trim() || null : null,
       ...(credDirty ? { credencial } : {}),
     }
     const onSuccess = () => {
@@ -154,6 +172,10 @@ function FerramentaEditor({ ferramenta, onClose }: { ferramenta: Ferramenta | nu
         <TextInput value={nome} autoFocus onChange={(e) => setNome(e.target.value)} placeholder="Ex.: RedTrack, Meta Ads…" />
       </Field>
 
+      <Field label="Link do site" hint="Abre direto no site da ferramenta.">
+        <TextInput value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} placeholder="https://app.redtrack.io" />
+      </Field>
+
       <Field label="Times que usam">
         <div className="row wrap" style={{ gap: 6 }}>
           {(donos ?? []).map((d) => (
@@ -172,7 +194,20 @@ function FerramentaEditor({ ferramenta, onClose }: { ferramenta: Ferramenta | nu
         <TextArea value={ondeObter} onChange={(e) => setOndeObter(e.target.value)} placeholder="Ex.: painel admin > API keys, ou peça pro João" />
       </Field>
 
-      <Field label="Credencial (cifrada)" hint={editing ? "Em branco mantém a atual. Cifrada com Fernet." : "Opcional. Guardada cifrada (Fernet)."}>
+      <Field label="Credencial">
+        <div className="row wrap" style={{ gap: 6, marginBottom: 8 }}>
+          <span className={"chip" + (credTipo === "valor" ? " on" : "")} onClick={() => setCredTipo("valor")}>
+            Valor único
+          </span>
+          <span className={"chip" + (credTipo === "email_senha" ? " on" : "")} onClick={() => setCredTipo("email_senha")}>
+            Email + senha
+          </span>
+        </div>
+        {credTipo === "email_senha" && (
+          <div style={{ marginBottom: 8 }}>
+            <TextInput value={credEmail} onChange={(e) => setCredEmail(e.target.value)} placeholder="email / login (em claro)" />
+          </div>
+        )}
         <div className="row" style={{ gap: 8 }}>
           <div style={{ flex: 1 }}>
             <TextInput
@@ -182,7 +217,13 @@ function FerramentaEditor({ ferramenta, onClose }: { ferramenta: Ferramenta | nu
                 setCredencial(e.target.value)
                 setCredDirty(true)
               }}
-              placeholder={editing && ferramenta?.tem_credencial ? "•••• (mantém a atual)" : "valor da credencial"}
+              placeholder={
+                editing && ferramenta?.tem_credencial
+                  ? "•••• (mantém a atual)"
+                  : credTipo === "email_senha"
+                    ? "senha"
+                    : "valor da credencial"
+              }
             />
           </div>
           {editing && ferramenta?.tem_credencial && (
@@ -191,6 +232,10 @@ function FerramentaEditor({ ferramenta, onClose }: { ferramenta: Ferramenta | nu
             </Button>
           )}
         </div>
+        <span className="hint">
+          {credTipo === "email_senha" ? "Email em claro; senha cifrada (Fernet)." : "Cifrada com Fernet."}
+          {editing && ferramenta?.tem_credencial ? " Em branco mantém a atual." : ""}
+        </span>
         {editing && ferramenta?.tem_credencial && (
           <button
             type="button"
