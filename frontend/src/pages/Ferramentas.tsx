@@ -79,10 +79,19 @@ export function Ferramentas() {
   )
 }
 
+function copiar(texto: string, msg: string) {
+  navigator.clipboard.writeText(texto).then(
+    () => toast.success(msg),
+    () => toast.error("Não foi possível copiar"),
+  )
+}
+
 function FerramentaEditor({ ferramenta, onClose }: { ferramenta: Ferramenta | null; onClose: () => void }) {
   const { data: donos } = useDonos()
   const { create, update, remove } = useFerramentaMutations()
   const editing = !!ferramenta
+  const [edit, setEdit] = useState(!ferramenta) // novo abre editando; existente abre em visualização
+  const [revealed, setRevealed] = useState<string | null>(null)
 
   const [nome, setNome] = useState(ferramenta?.nome ?? "")
   const [times, setTimes] = useState<Set<string>>(new Set(ferramenta?.times ?? []))
@@ -110,6 +119,16 @@ function FerramentaEditor({ ferramenta, onClose }: { ferramenta: Ferramenta | nu
       toast.success("Credencial revelada")
     } catch (e) {
       toast.error("Sem credencial ou erro", e instanceof Error ? e.message : undefined)
+    }
+  }
+
+  async function mostrarSenha() {
+    if (!ferramenta) return
+    try {
+      const { credencial: v } = await ferramentasApi.revelar(ferramenta.id)
+      setRevealed(v)
+    } catch (e) {
+      toast.error("Não foi possível revelar", e instanceof Error ? e.message : undefined)
     }
   }
 
@@ -150,24 +169,42 @@ function FerramentaEditor({ ferramenta, onClose }: { ferramenta: Ferramenta | nu
   }
 
   const saving = create.isPending || update.isPending
+  const titulo = !editing ? "Nova ferramenta" : edit ? "Editar ferramenta" : ferramenta!.nome
+
+  const footer = !edit ? (
+    <>
+      <Button variant="danger" icon="trash" onClick={excluir} style={{ marginRight: "auto" }}>
+        Excluir
+      </Button>
+      <Button variant="primary" icon="edit" onClick={() => setEdit(true)}>
+        Editar
+      </Button>
+    </>
+  ) : (
+    <>
+      {editing && (
+        <Button variant="danger" icon="trash" onClick={excluir} style={{ marginRight: "auto" }}>
+          Excluir
+        </Button>
+      )}
+      {editing && (
+        <Button variant="ghost" onClick={() => setEdit(false)}>
+          Cancelar
+        </Button>
+      )}
+      <Button variant="primary" icon="check" onClick={salvar} disabled={saving} style={{ marginLeft: editing ? undefined : "auto" }}>
+        {saving ? "Salvando…" : "Salvar"}
+      </Button>
+    </>
+  )
 
   return (
-    <Drawer
-      title={editing ? "Editar ferramenta" : "Nova ferramenta"}
-      onClose={onClose}
-      footer={
+    <Drawer title={titulo} onClose={onClose} footer={footer}>
+      {!edit && ferramenta && (
+        <FerramentaView ferramenta={ferramenta} revealed={revealed} onMostrar={mostrarSenha} onOcultar={() => setRevealed(null)} />
+      )}
+      {edit && (
         <>
-          {editing && (
-            <Button variant="danger" icon="trash" onClick={excluir} style={{ marginRight: "auto" }}>
-              Excluir
-            </Button>
-          )}
-          <Button variant="primary" icon="check" onClick={salvar} disabled={saving} style={{ marginLeft: editing ? undefined : "auto" }}>
-            {saving ? "Salvando…" : "Salvar"}
-          </Button>
-        </>
-      }
-    >
       <Field label="Nome *">
         <TextInput value={nome} autoFocus onChange={(e) => setNome(e.target.value)} placeholder="Ex.: RedTrack, Meta Ads…" />
       </Field>
@@ -251,6 +288,91 @@ function FerramentaEditor({ ferramenta, onClose }: { ferramenta: Ferramenta | nu
           </button>
         )}
       </Field>
+        </>
+      )}
     </Drawer>
+  )
+}
+
+function FerramentaView({
+  ferramenta,
+  revealed,
+  onMostrar,
+  onOcultar,
+}: {
+  ferramenta: Ferramenta
+  revealed: string | null
+  onMostrar: () => void
+  onOcultar: () => void
+}) {
+  const f = ferramenta
+  const labelSecret = f.cred_tipo === "email_senha" ? "Senha" : "Valor"
+  return (
+    <div className="stack" style={{ gap: 14 }}>
+      {f.site_url && (
+        <a href={f.site_url} target="_blank" rel="noreferrer" className="tag" style={{ textDecoration: "none", width: "fit-content" }}>
+          <Icon name="external" size={12} /> Abrir site
+        </a>
+      )}
+
+      <Field label="Times que usam">
+        <div className="row wrap" style={{ gap: 6 }}>
+          {f.times.length ? f.times.map((t) => <OriginTag key={t} origin={t} />) : <span className="muted" style={{ fontSize: 13 }}>nenhum</span>}
+        </div>
+      </Field>
+
+      {f.descricao && (
+        <Field label="Descrição">
+          <p className="sub" style={{ margin: 0 }}>{f.descricao}</p>
+        </Field>
+      )}
+
+      {f.onde_obter && (
+        <Field label="Onde obter a credencial">
+          <p className="sub" style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{f.onde_obter}</p>
+        </Field>
+      )}
+
+      <Field label="Credencial">
+        {!f.tem_credencial && f.cred_tipo !== "email_senha" ? (
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>Sem credencial armazenada.</p>
+        ) : (
+          <div className="stack" style={{ gap: 8 }}>
+            {f.cred_tipo === "email_senha" && f.cred_email && (
+              <div className="row" style={{ gap: 8 }}>
+                <span className="t-label" style={{ width: 52 }}>Email</span>
+                <span className="mono" style={{ flex: 1, wordBreak: "break-all" }}>{f.cred_email}</span>
+                <Button type="button" size="sm" variant="ghost" icon="copy" onClick={() => copiar(f.cred_email!, "Email copiado")}>
+                  Copiar
+                </Button>
+              </div>
+            )}
+            {f.tem_credencial && (
+              <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                <span className="t-label" style={{ width: 52 }}>{labelSecret}</span>
+                {revealed === null ? (
+                  <>
+                    <span className="mono" style={{ flex: 1, color: "var(--muted)" }}>••••••••</span>
+                    <Button type="button" size="sm" variant="ghost" icon="eye" onClick={onMostrar}>
+                      Mostrar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="mono" style={{ flex: 1, wordBreak: "break-all" }}>{revealed}</span>
+                    <Button type="button" size="sm" variant="ghost" icon="copy" onClick={() => copiar(revealed, `${labelSecret} copiado`)}>
+                      Copiar
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" icon="eyeoff" onClick={onOcultar}>
+                      Ocultar
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </Field>
+    </div>
   )
 }
