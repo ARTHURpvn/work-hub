@@ -28,6 +28,7 @@ export interface Projeto {
   site_url: string | null
   publicavel: boolean
   arquivado: boolean
+  rascunho: boolean
   criado_em: string
   membros: Membro[]
   vps: VpsResumo | null
@@ -45,6 +46,7 @@ export interface ProjetoCreate {
   github_url?: string | null
   site_url?: string | null
   publicavel?: boolean
+  rascunho?: boolean
 }
 
 export type ProjetoUpdate = Partial<ProjetoCreate & { arquivado: boolean }>
@@ -84,6 +86,11 @@ export const projetosApi = {
     return request<Projeto[]>(`/projetos?${qs}`)
   },
   get: (id: string) => request<Projeto>(`/projetos/${id}`),
+  gerarDescricao: (github_url: string) =>
+    request<{ descricao: string }>(`/projetos/gerar-descricao`, {
+      method: "POST",
+      body: JSON.stringify({ github_url }),
+    }),
   create: (body: ProjetoCreate) =>
     request<Projeto>("/projetos", { method: "POST", body: JSON.stringify(body) }),
   update: (id: string, body: ProjetoUpdate) =>

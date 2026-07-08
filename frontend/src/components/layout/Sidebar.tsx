@@ -57,7 +57,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { data: skills } = useSkills()
 
   const counts: Record<string, number> = {
-    projetos: (projetos ?? []).filter((p) => !p.arquivado).length,
+    projetos: (projetos ?? []).filter((p) => !p.arquivado && !p.rascunho).length,
     vps: (vps ?? []).length,
     skills: (skills ?? []).length,
   }

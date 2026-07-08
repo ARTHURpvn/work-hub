@@ -54,11 +54,14 @@ export function Field({
   label,
   hint,
   htmlFor,
+  action,
   children,
 }: {
   label?: ReactNode
   hint?: ReactNode
   htmlFor?: string
+  /** Ação opcional à direita do rótulo (ex.: botão). Fica fora do <label> para não aninhar interativos. */
+  action?: ReactNode
   children: ReactNode
 }) {
   const autoId = useId()
@@ -76,7 +79,14 @@ export function Field({
   }
   return (
     <div className="field">
-      {label && <label htmlFor={id}>{label}</label>}
+      {action ? (
+        <div className="field-head">
+          {label && <label htmlFor={id}>{label}</label>}
+          {action}
+        </div>
+      ) : (
+        label && <label htmlFor={id}>{label}</label>
+      )}
       {control}
       {hint && <span className="hint">{hint}</span>}
     </div>

@@ -1,6 +1,6 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
 import { vpsApi, type VpsComProjetos } from "@/api/vps"
+import { ProjetoViewModal } from "@/components/projetos/ProjetoViewModal"
 import { Icon } from "@/components/ui/Icon"
 import { Drawer } from "@/components/ui/Drawer"
 import { Button, Check, Empty, Field, OriginTag, TextInput } from "@/components/ui/kit"
@@ -141,7 +141,7 @@ function VpsCreateDrawer({ onClose }: { onClose: () => void }) {
 }
 
 function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () => void }) {
-  const navigate = useNavigate()
+  const [projetoId, setProjetoId] = useState<string | null>(null)
   const update = useUpdateVps()
   const del = useDeleteVps()
   const setVpsProjetos = useSetVpsProjetos()
@@ -169,8 +169,8 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
       return n
     })
 
-  // projetos selecionáveis: ativos + os já vinculados a esta VPS (mesmo arquivados)
-  const selecionaveis = (projetos ?? []).filter((p) => !p.arquivado || sel.has(p.id))
+  // projetos selecionáveis: ativos (não rascunho) + os já vinculados a esta VPS (mesmo arquivados)
+  const selecionaveis = (projetos ?? []).filter((p) => (!p.arquivado && !p.rascunho) || sel.has(p.id))
 
   function save() {
     update.mutate(
@@ -244,7 +244,8 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
   )
 
   return (
-    <Drawer title={head} onClose={onClose} footer={footer}>
+    <>
+      <Drawer title={head} onClose={onClose} footer={footer} escClose={!projetoId} dim={!projetoId}>
       {edit ? (
         <div>
           <Field label="Nome">
@@ -359,7 +360,7 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
             <div style={{ marginTop: 8 }}>
               {server.projetos.length ? (
                 server.projetos.map((p) => (
-                  <div key={p.id} className="lrow click" style={{ padding: "9px 4px" }} onClick={() => navigate("/projetos")}>
+                  <div key={p.id} className="lrow click" style={{ padding: "9px 4px" }} onClick={() => setProjetoId(p.id)}>
                     <OriginTag origin={p.origem} />
                     <span style={{ flex: 1, fontWeight: 600 }} className="truncate">
                       {p.nome}
@@ -376,6 +377,8 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
           </div>
         </div>
       )}
-    </Drawer>
+      </Drawer>
+      {projetoId && <ProjetoViewModal projetoId={projetoId} onClose={() => setProjetoId(null)} />}
+    </>
   )
 }

@@ -5,6 +5,7 @@ export interface ProjetosResumo {
   total: number
   ativos: number
   arquivados: number
+  ideias: number
   com_vps: number
   com_autenticacao: number
   publicaveis: number

@@ -2,17 +2,16 @@ import { useState } from "react"
 import { projetosApi, type Origem, type Projeto } from "@/api/projetos"
 import { Icon } from "@/components/ui/Icon"
 import { Drawer } from "@/components/ui/Drawer"
+import { ProjetoView } from "@/components/projetos/ProjetoView"
 import {
   Button,
   Empty,
   Field,
-  IconButton,
   OriginTag,
   Select,
   TextArea,
   TextInput,
 } from "@/components/ui/kit"
-import { copyText } from "@/lib/utils"
 import { useCreateProjeto, useProjetos, useUpdateProjeto } from "@/hooks/useProjetos"
 import { useDeleteCredencial, useUpsertCredencial } from "@/hooks/useCredencial"
 import { useDonos } from "@/hooks/useDonos"
@@ -25,21 +24,24 @@ export function Projetos() {
 
   const [filter, setFilter] = useState<"all" | Origem>("all")
   const [showArch, setShowArch] = useState(false)
+  const [showIdeias, setShowIdeias] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const [editNew, setEditNew] = useState(false)
-  const [creating, setCreating] = useState(false)
+  const [creating, setCreating] = useState<"projeto" | "ideia" | null>(null)
 
   const all = projetos ?? []
-  let list = all.filter((p) => (showArch ? true : !p.arquivado))
-  if (filter !== "all") list = list.filter((p) => p.origem === filter)
+  let list: Projeto[]
+  if (showIdeias) {
+    list = all.filter((p) => p.rascunho)
+  } else {
+    list = all.filter((p) => !p.rascunho && (showArch ? true : !p.arquivado))
+    if (filter !== "all") list = list.filter((p) => p.origem === filter)
+  }
   const open = all.find((p) => p.id === openId) ?? null
 
-  function create() {
-    setCreating(true)
-  }
-
-  const ativos = all.filter((p) => !p.arquivado).length
-  const arquivados = all.filter((p) => p.arquivado).length
+  const ativos = all.filter((p) => !p.arquivado && !p.rascunho).length
+  const arquivados = all.filter((p) => p.arquivado && !p.rascunho).length
+  const ideias = all.filter((p) => p.rascunho).length
 
   return (
     <div className="page">
@@ -47,29 +49,63 @@ export function Projetos() {
         <div>
           <h1 className="t-display">Projetos</h1>
           <div className="sub">
-            {ativos} ativos · {arquivados} arquivados
+            {ativos} ativos · {arquivados} arquivados · {ideias} ideias
           </div>
         </div>
-        <Button variant="primary" icon="plus" onClick={create}>
-          Novo projeto
-        </Button>
+        <div className="row" style={{ gap: 8 }}>
+          <Button variant="ghost" icon="sparkle" onClick={() => setCreating("ideia")}>
+            Nova ideia
+          </Button>
+          <Button variant="primary" icon="plus" onClick={() => setCreating("projeto")}>
+            Novo projeto
+          </Button>
+        </div>
       </div>
 
       {all.length ? (
         <>
           <div className="row wrap" style={{ gap: 8, marginBottom: 20 }}>
-            <span className={"chip" + (filter === "all" ? " on" : "")} onClick={() => setFilter("all")}>
+            <span
+              className={"chip" + (filter === "all" && !showIdeias ? " on" : "")}
+              onClick={() => {
+                setFilter("all")
+                setShowIdeias(false)
+              }}
+            >
               Todos
             </span>
             {(donos ?? []).map((o) => (
-              <span key={o.id} className={"chip" + (filter === o.nome ? " on" : "")} onClick={() => setFilter(o.nome)}>
+              <span
+                key={o.id}
+                className={"chip" + (filter === o.nome && !showIdeias ? " on" : "")}
+                onClick={() => {
+                  setFilter(o.nome)
+                  setShowIdeias(false)
+                }}
+              >
                 {o.nome}
               </span>
             ))}
             <span
-              className={"chip" + (showArch ? " on" : "")}
+              className={"chip" + (showIdeias ? " on" : "")}
               style={{ marginLeft: "auto" }}
-              onClick={() => setShowArch((s) => !s)}
+              onClick={() =>
+                setShowIdeias((s) => {
+                  if (!s) setShowArch(false)
+                  return !s
+                })
+              }
+            >
+              <Icon name="sparkle" size={13} /> Ideias
+            </span>
+            <span
+              className={"chip" + (showArch ? " on" : "")}
+              onClick={() =>
+                setShowArch((s) => {
+                  if (!s) setShowIdeias(false)
+                  return !s
+                })
+              }
             >
               <Icon name="archive" size={13} /> Arquivados
             </span>
@@ -90,7 +126,12 @@ export function Projetos() {
             </div>
           ) : (
             <div className="card card-pad">
-              <Empty icon="folder" title="Nenhum projeto neste filtro" />
+              <Empty
+                icon={showIdeias ? "sparkle" : "folder"}
+                title={showIdeias ? "Nenhuma ideia ainda" : "Nenhum projeto neste filtro"}
+              >
+                {showIdeias ? "Guarde aqui projetos que quer fazer para não esquecer." : undefined}
+              </Empty>
             </div>
           )}
         </>
@@ -100,7 +141,7 @@ export function Projetos() {
             icon="folder"
             title="Nenhum projeto ainda"
             action={
-              <Button variant="primary" icon="plus" onClick={create}>
+              <Button variant="primary" icon="plus" onClick={() => setCreating("projeto")}>
                 Criar primeiro projeto
               </Button>
             }
@@ -112,9 +153,12 @@ export function Projetos() {
 
       {creating && (
         <ProjetoCreateDrawer
-          onClose={() => setCreating(false)}
-          onCreated={(id) => {
-            setCreating(false)
+          rascunho={creating === "ideia"}
+          onClose={() => setCreating(null)}
+          onCreated={(id, rascunho) => {
+            setCreating(null)
+            // mostra a lista onde o item recém-criado aparece: Ideias se rascunho, senão ativos
+            setShowIdeias(rascunho)
             setOpenId(id)
             setEditNew(false)
           }}
@@ -199,7 +243,15 @@ function VpsSelectField({ value, onChange }: { value: string; onChange: (id: str
   )
 }
 
-function ProjetoCreateDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+function ProjetoCreateDrawer({
+  onClose,
+  onCreated,
+  rascunho = false,
+}: {
+  onClose: () => void
+  onCreated: (id: string, rascunho: boolean) => void
+  rascunho?: boolean
+}) {
   const createProjeto = useCreateProjeto()
   const { data: donos } = useDonos()
   const [form, setForm] = useState({
@@ -214,7 +266,7 @@ function ProjetoCreateDrawer({ onClose, onCreated }: { onClose: () => void; onCr
 
   function criar() {
     if (!form.nome.trim()) {
-      toast.error("Informe o nome do projeto")
+      toast.error(rascunho ? "Dê um nome para a ideia" : "Informe o nome do projeto")
       return
     }
     createProjeto.mutate(
@@ -225,11 +277,12 @@ function ProjetoCreateDrawer({ onClose, onCreated }: { onClose: () => void; onCr
         site_url: form.site_url || null,
         github_url: form.github_url || null,
         vps_id: form.vps_id || null,
+        rascunho,
       },
       {
         onSuccess: (p) => {
-          toast.success("Projeto criado")
-          onCreated(p.id)
+          toast.success(rascunho ? "Ideia salva" : "Projeto criado")
+          onCreated(p.id, rascunho)
         },
         onError: (e) => toast.error("Erro ao criar", e instanceof Error ? e.message : undefined),
       }
@@ -238,11 +291,11 @@ function ProjetoCreateDrawer({ onClose, onCreated }: { onClose: () => void; onCr
 
   return (
     <Drawer
-      title="Novo projeto"
+      title={rascunho ? "Nova ideia" : "Novo projeto"}
       onClose={onClose}
       footer={
         <Button variant="primary" icon="check" onClick={criar} disabled={createProjeto.isPending} style={{ marginLeft: "auto" }}>
-          {createProjeto.isPending ? "Criando…" : "Criar projeto"}
+          {createProjeto.isPending ? "Salvando…" : rascunho ? "Salvar ideia" : "Criar projeto"}
         </Button>
       }
     >
@@ -258,17 +311,71 @@ function ProjetoCreateDrawer({ onClose, onCreated }: { onClose: () => void; onCr
           ))}
         </Select>
       </Field>
-      <Field label="Descrição">
-        <TextArea value={form.descricao} onChange={(e) => set("descricao", e.target.value)} placeholder="O que é este projeto?" />
-      </Field>
-      <Field label="Link do site">
-        <TextInput value={form.site_url} onChange={(e) => set("site_url", e.target.value)} placeholder="https://" />
-      </Field>
       <Field label="Repositório GitHub">
         <TextInput value={form.github_url} onChange={(e) => set("github_url", e.target.value)} placeholder="https://github.com/…" />
       </Field>
+      <DescricaoField
+        value={form.descricao}
+        githubUrl={form.github_url}
+        onChange={(v) => set("descricao", v)}
+      />
+      <Field label="Link do site">
+        <TextInput value={form.site_url} onChange={(e) => set("site_url", e.target.value)} placeholder="https://" />
+      </Field>
       <VpsSelectField value={form.vps_id} onChange={(id) => set("vps_id", id)} />
     </Drawer>
+  )
+}
+
+/** Botão que chama a IA para gerar a descrição a partir do repositório GitHub. */
+function BotaoGerarDescricao({
+  githubUrl,
+  onGenerated,
+}: {
+  githubUrl: string
+  onGenerated: (texto: string) => void
+}) {
+  const [loading, setLoading] = useState(false)
+
+  async function gerar() {
+    const url = githubUrl.trim()
+    if (!url) {
+      toast.error("Informe o repositório GitHub primeiro")
+      return
+    }
+    setLoading(true)
+    try {
+      const { descricao } = await projetosApi.gerarDescricao(url)
+      onGenerated(descricao)
+      toast.success("Descrição gerada pela IA")
+    } catch (e) {
+      toast.error("Não foi possível gerar", e instanceof Error ? e.message : undefined)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Button type="button" size="sm" variant="ghost" icon="sparkle" disabled={loading} onClick={gerar}>
+      {loading ? "Gerando…" : "Gerar com IA"}
+    </Button>
+  )
+}
+
+/** Campo de descrição com botão de geração por IA ao lado do rótulo. Usado no criar e no editar. */
+function DescricaoField({
+  value,
+  githubUrl,
+  onChange,
+}: {
+  value: string
+  githubUrl: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <Field label="Descrição" action={<BotaoGerarDescricao githubUrl={githubUrl} onGenerated={onChange} />}>
+      <TextArea value={value} onChange={(e) => onChange(e.target.value)} placeholder="O que é este projeto?" />
+    </Field>
   )
 }
 
@@ -277,7 +384,11 @@ function ProjectCard({ p, onOpen }: { p: Projeto; onOpen: () => void }) {
     <div className="card card-pad card-hover" onClick={onOpen}>
       <div className="spread" style={{ marginBottom: 12 }}>
         <OriginTag origin={p.origem} />
-        {p.arquivado ? (
+        {p.rascunho ? (
+          <span className="chip static">
+            <Icon name="sparkle" size={13} /> Ideia
+          </span>
+        ) : p.arquivado ? (
           <span className="chip static">
             <Icon name="archive" size={13} /> Arquivado
           </span>
@@ -349,7 +460,6 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
   const delCred = useDeleteCredencial()
 
   const [edit, setEdit] = useState(startEdit)
-  const [reveal, setReveal] = useState<{ usuario: string; senha: string } | null>(null)
   const [form, setForm] = useState({
     nome: projeto.nome,
     origem: projeto.origem,
@@ -388,25 +498,17 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
     )
   }
 
-  async function doReveal() {
-    if (reveal) {
-      setReveal(null)
-      return
-    }
-    try {
-      const cred = await projetosApi.revelarCredencial(projeto.id)
-      setReveal(cred)
-    } catch (e) {
-      toast.error("Erro ao revelar", e instanceof Error ? e.message : undefined)
-    }
-  }
-
   const head = (
     <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
       <OriginTag origin={projeto.origem} />
       <span style={{ fontWeight: 700, fontSize: 15 }} className="truncate">
         {projeto.nome || "(sem nome)"}
       </span>
+      {projeto.rascunho && (
+        <span className="chip static">
+          <Icon name="sparkle" size={12} /> Ideia
+        </span>
+      )}
     </div>
   )
 
@@ -414,6 +516,25 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
     <>
       <Button variant="primary" icon="check" onClick={save} disabled={update.isPending} style={{ marginLeft: "auto" }}>
         Salvar
+      </Button>
+    </>
+  ) : projeto.rascunho ? (
+    <>
+      <Button
+        icon="check"
+        onClick={() =>
+          update.mutate(
+            { id: projeto.id, data: { rascunho: false } },
+            { onSuccess: () => toast.success("Ideia promovida para projeto ativo") }
+          )
+        }
+        disabled={update.isPending}
+        style={{ marginRight: "auto" }}
+      >
+        Promover para ativo
+      </Button>
+      <Button variant="primary" icon="edit" onClick={() => setEdit(true)}>
+        Editar
       </Button>
     </>
   ) : (
@@ -447,14 +568,16 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
               ))}
             </Select>
           </Field>
-          <Field label="Descrição">
-            <TextArea value={form.descricao} onChange={(e) => set("descricao", e.target.value)} placeholder="O que é este projeto?" />
-          </Field>
-          <Field label="Link do site">
-            <TextInput value={form.site_url} onChange={(e) => set("site_url", e.target.value)} placeholder="https://" />
-          </Field>
           <Field label="Repositório GitHub">
             <TextInput value={form.github_url} onChange={(e) => set("github_url", e.target.value)} placeholder="https://github.com/…" />
+          </Field>
+          <DescricaoField
+            value={form.descricao}
+            githubUrl={form.github_url}
+            onChange={(v) => set("descricao", v)}
+          />
+          <Field label="Link do site">
+            <TextInput value={form.site_url} onChange={(e) => set("site_url", e.target.value)} placeholder="https://" />
           </Field>
           <VpsSelectField value={form.vps_id} onChange={(id) => set("vps_id", id)} />
           <div className="grid g-2" style={{ gap: 12 }}>
@@ -477,82 +600,7 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
           )}
         </div>
       ) : (
-        <div>
-          {projeto.descricao && (
-            <div className="det-block">
-              <span className="t-label">Descrição</span>
-              <p style={{ margin: "8px 0 0", lineHeight: 1.55 }}>{projeto.descricao}</p>
-            </div>
-          )}
-          <div className="det-block">
-            <span className="t-label">Links</span>
-            <div className="row wrap" style={{ gap: 8, marginTop: 8 }}>
-              {projeto.site_url && (
-                <a className="det-link" href={projeto.site_url} target="_blank" rel="noreferrer">
-                  <Icon name="external" size={14} /> Site
-                </a>
-              )}
-              {projeto.github_url && (
-                <a className="det-link" href={projeto.github_url} target="_blank" rel="noreferrer">
-                  <Icon name="external" size={14} /> GitHub
-                </a>
-              )}
-              {!projeto.site_url && !projeto.github_url && (
-                <button className="det-link" onClick={() => setEdit(true)} style={{ cursor: "pointer" }}>
-                  <Icon name="plus" size={14} /> Adicionar site / GitHub
-                </button>
-              )}
-            </div>
-          </div>
-          {projeto.tem_credencial && (
-            <div className="det-block">
-              <span className="t-label">Credencial</span>
-              <div
-                className="card"
-                style={{ padding: "10px 13px", marginTop: 8, display: "flex", alignItems: "center", gap: 10, background: "var(--bg-2)" }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="mono" style={{ fontSize: 13 }}>
-                    {reveal ? reveal.usuario : "•••••"}
-                  </div>
-                  <div className="mono" style={{ letterSpacing: reveal ? 0 : 2 }}>
-                    {reveal ? reveal.senha : "••••••••"}
-                  </div>
-                </div>
-                <IconButton name={reveal ? "eyeoff" : "eye"} size={17} onClick={doReveal} />
-              </div>
-            </div>
-          )}
-          <div className="det-block">
-            <span className="t-label">VPS</span>
-            <div style={{ marginTop: 8 }}>
-              {projeto.vps ? (
-                <button
-                  className="chip"
-                  title={`Copiar: ssh root@${projeto.vps.ip}`}
-                  onClick={async () => {
-                    const cmd = `ssh root@${projeto.vps!.ip}`
-                    const ok = await copyText(cmd)
-                    if (ok) toast.success("Copiado", cmd)
-                    else toast.error("Não foi possível copiar", cmd)
-                  }}
-                >
-                  <Icon name="server" size={14} /> {projeto.vps.nome || projeto.vps.ip}
-                  <Icon name="copy" size={13} />
-                </button>
-              ) : (
-                <span className="muted" style={{ fontSize: 13.5 }}>
-                  Sem servidor vinculado
-                </span>
-              )}
-            </div>
-            {projeto.vps && (
-              <div className="t-meta mono" style={{ marginTop: 6 }}>
-                ssh root@{projeto.vps.ip}
-              </div>
-            )}
-          </div>
-        </div>
+        <ProjetoView projeto={projeto} onEdit={() => setEdit(true)} />
       )}
     </Drawer>
   )

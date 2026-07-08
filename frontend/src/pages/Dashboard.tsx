@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom"
 import { Icon, type IconName } from "@/components/ui/Icon"
 import { Button, Empty, OriginTag, Progress } from "@/components/ui/kit"
-import { fmtLong, todayISO } from "@/lib/domain"
+import { fmtDate, fmtLong, todayISO } from "@/lib/domain"
 import { useDashboard } from "@/hooks/useDashboard"
 import { useDonos } from "@/hooks/useDonos"
 import { useFerramentas } from "@/hooks/useFerramentas"
@@ -28,7 +28,8 @@ export function Dashboard() {
   }
 
   const repositorios_por_vps = data.repositorios_por_vps
-  const isEmpty = data.projetos.total === 0 && repositorios_por_vps.length === 0
+  const isEmpty =
+    data.projetos.total === 0 && data.projetos.ideias === 0 && repositorios_por_vps.length === 0
 
   if (isEmpty) {
     return (
@@ -50,7 +51,20 @@ export function Dashboard() {
     )
   }
 
-  const semVps = (listaProjetos ?? []).filter((p) => !p.arquivado && !p.vps_id).length
+  const ativosProj = (listaProjetos ?? []).filter((p) => !p.arquivado && !p.rascunho)
+  const semVps = ativosProj.filter((p) => !p.vps_id).length
+  const saude: { label: string; count: number; icon: IconName }[] = [
+    { label: "Sem VPS", count: semVps, icon: "server" },
+    { label: "Sem descrição", count: ativosProj.filter((p) => !p.descricao?.trim()).length, icon: "edit" },
+    { label: "Sem GitHub", count: ativosProj.filter((p) => !p.github_url).length, icon: "external" },
+    { label: "Sem site", count: ativosProj.filter((p) => !p.site_url).length, icon: "link" },
+  ]
+  const recentes = (listaProjetos ?? [])
+    .filter((p) => !p.rascunho && !p.arquivado)
+    .slice()
+    .sort((a, b) => (a.criado_em < b.criado_em ? 1 : -1))
+    .slice(0, 5)
+
   const donosList = (donos ?? []).filter((d) => d.projetos_count > 0)
   const maxDono = Math.max(1, ...donosList.map((d) => d.projetos_count))
 
@@ -79,9 +93,63 @@ export function Dashboard() {
 
       <div className="grid g-kpi" style={{ marginBottom: 18 }}>
         {kpi("Projetos ativos", data.projetos.ativos, "folder")}
+        {kpi("Ideias", data.projetos.ideias, "sparkle")}
         {kpi("VPS", (vps ?? []).length, "server")}
         {kpi("Ferramentas", (ferramentas ?? []).length, "key")}
-        {kpi("Projetos sem VPS", semVps, "alert", true)}
+      </div>
+
+      <div className="split" style={{ marginBottom: 18 }}>
+        <div className="card card-pad">
+          <div className="spread" style={{ marginBottom: 14 }}>
+            <h3 className="t-h2">Saúde do cadastro</h3>
+            <span className="chip static" onClick={() => navigate("/projetos")} style={{ cursor: "pointer" }}>
+              ver projetos
+            </span>
+          </div>
+          {ativosProj.length ? (
+            saude.map((s) => (
+              <div key={s.label} className="lrow click" onClick={() => navigate("/projetos")} style={{ gap: 12 }}>
+                <div className="avatar" style={{ borderRadius: 8 }}>
+                  <Icon name={s.icon} size={15} />
+                </div>
+                <span style={{ flex: 1 }}>{s.label}</span>
+                <span
+                  className={"chip static" + (s.count > 0 ? " alert" : "")}
+                  style={s.count > 0 ? { color: "var(--danger)", borderColor: "var(--danger)" } : undefined}
+                >
+                  {s.count}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="muted" style={{ margin: 0, padding: "8px 0" }}>
+              Nenhum projeto ativo. Cadastre um projeto para acompanhar a saúde do cadastro.
+            </p>
+          )}
+        </div>
+
+        <div className="card card-pad">
+          <h3 className="t-h2" style={{ marginBottom: 12 }}>
+            Projetos recentes
+          </h3>
+          {recentes.length ? (
+            recentes.map((p) => (
+              <div key={p.id} className="lrow click" onClick={() => navigate("/projetos")} style={{ gap: 12 }}>
+                <OriginTag origin={p.origem} />
+                <span style={{ flex: 1, minWidth: 0, fontWeight: 600 }} className="truncate">
+                  {p.nome || "(sem nome)"}
+                </span>
+                <span className="t-meta mono" style={{ whiteSpace: "nowrap" }}>
+                  {fmtDate(p.criado_em)}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="muted" style={{ margin: 0, padding: "8px 0" }}>
+              Nenhum projeto ainda.
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="split">
