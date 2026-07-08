@@ -13,6 +13,7 @@ export interface Vps {
   ip: string
   provedor: string | null
   criado_em: string
+  tem_senha: boolean
 }
 
 export interface VpsComProjetos extends Vps {
@@ -23,6 +24,7 @@ export interface VpsCreate {
   nome?: string | null
   ip: string
   provedor?: string | null
+  senha?: string | null
 }
 
 export type VpsUpdate = Partial<VpsCreate>
@@ -54,5 +56,6 @@ export const vpsApi = {
       method: "PUT",
       body: JSON.stringify({ projeto_ids }),
     }),
+  revelarSenha: (id: string) => request<{ senha: string }>(`/vps/${id}/revelar-senha`),
   remove: (id: string) => request<void>(`/vps/${id}`, { method: "DELETE" }),
 }

@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.models.projeto import Projeto
 from app.models.vps import Vps
 from app.schemas.vps import VpsCreate, VpsUpdate
+from app.services import crypto_service
 
 
 async def list_vps(session: AsyncSession) -> list[Vps]:
@@ -29,6 +30,7 @@ async def create_vps(session: AsyncSession, data: VpsCreate) -> Vps:
         nome=data.nome,
         ip=data.ip,
         provedor=data.provedor,
+        senha_cifrada=crypto_service.encrypt(data.senha) if data.senha else None,
         criado_em=datetime.now(tz=timezone.utc),
     )
     session.add(vps)
@@ -39,11 +41,22 @@ async def create_vps(session: AsyncSession, data: VpsCreate) -> Vps:
 
 async def update_vps(session: AsyncSession, vps: Vps, data: VpsUpdate) -> Vps:
     patch = data.model_dump(exclude_unset=True)
+    if "senha" in patch:
+        senha = patch.pop("senha")
+        # "" limpa; valor novo cifra; ausência (exclude_unset) mantém
+        vps.senha_cifrada = crypto_service.encrypt(senha) if senha else None
     for field, value in patch.items():
         setattr(vps, field, value)
     await session.flush()
     await session.refresh(vps, ["projetos"])
     return vps
+
+
+def revelar_senha(vps: Vps) -> str | None:
+    """Decifra a senha da VPS. Use apenas no endpoint explícito de revelar."""
+    if not vps.senha_cifrada:
+        return None
+    return crypto_service.decrypt(vps.senha_cifrada)
 
 
 async def set_projetos(

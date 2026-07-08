@@ -5,10 +5,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
 from app.deps import get_current_user
-from app.schemas.vps import VpsComProjetos, VpsCreate, VpsProjetosUpdate, VpsResponse, VpsUpdate
+from app.schemas.vps import (
+    SenhaRevelada,
+    VpsComProjetos,
+    VpsCreate,
+    VpsProjetosUpdate,
+    VpsResponse,
+    VpsUpdate,
+)
 from app.services import vps_service
 
 router = APIRouter()
+
+
+def _resp(vps) -> VpsResponse:
+    out = VpsResponse.model_validate(vps)
+    out.tem_senha = bool(vps.senha_cifrada)
+    return out
+
+
+def _com(vps) -> VpsComProjetos:
+    out = VpsComProjetos.model_validate(vps)
+    out.tem_senha = bool(vps.senha_cifrada)
+    return out
 
 
 @router.get("", response_model=list[VpsComProjetos])
@@ -17,7 +36,7 @@ async def list_vps(
     session: AsyncSession = Depends(get_session),
 ) -> list[VpsComProjetos]:
     vps_list = await vps_service.list_vps(session)
-    return [VpsComProjetos.model_validate(v) for v in vps_list]
+    return [_com(v) for v in vps_list]
 
 
 @router.post("", response_model=VpsResponse, status_code=status.HTTP_201_CREATED)
@@ -28,7 +47,7 @@ async def create_vps(
 ) -> VpsResponse:
     vps = await vps_service.create_vps(session, body)
     await session.commit()
-    return VpsResponse.model_validate(vps)
+    return _resp(vps)
 
 
 @router.get("/{vps_id}", response_model=VpsComProjetos)
@@ -40,7 +59,7 @@ async def get_vps(
     vps = await vps_service.get_vps(session, vps_id)
     if vps is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="VPS não encontrada")
-    return VpsComProjetos.model_validate(vps)
+    return _com(vps)
 
 
 @router.patch("/{vps_id}", response_model=VpsResponse)
@@ -55,7 +74,7 @@ async def update_vps(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="VPS não encontrada")
     vps = await vps_service.update_vps(session, vps, body)
     await session.commit()
-    return VpsResponse.model_validate(vps)
+    return _resp(vps)
 
 
 @router.put("/{vps_id}/projetos", response_model=VpsComProjetos)
@@ -74,7 +93,22 @@ async def set_vps_projetos(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     await session.commit()
     vps = await vps_service.get_vps(session, vps_id)
-    return VpsComProjetos.model_validate(vps)
+    return _com(vps)
+
+
+@router.get("/{vps_id}/revelar-senha", response_model=SenhaRevelada)
+async def revelar_senha(
+    vps_id: uuid.UUID,
+    _user: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SenhaRevelada:
+    vps = await vps_service.get_vps(session, vps_id)
+    if vps is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="VPS não encontrada")
+    senha = vps_service.revelar_senha(vps)
+    if senha is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sem senha armazenada")
+    return SenhaRevelada(senha=senha)
 
 
 @router.delete("/{vps_id}", status_code=status.HTTP_204_NO_CONTENT)

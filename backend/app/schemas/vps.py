@@ -17,6 +17,7 @@ class VpsCreate(BaseModel):
     nome: str | None = None
     ip: str
     provedor: str | None = None
+    senha: str | None = None  # em claro; cifrada antes de persistir
 
     _check_ip = field_validator("ip")(_validate_ip)
 
@@ -25,11 +26,17 @@ class VpsUpdate(BaseModel):
     nome: str | None = None
     ip: str | None = None
     provedor: str | None = None
+    # senha: string nova cifra; "" limpa; None mantém a atual
+    senha: str | None = None
 
     @field_validator("ip")
     @classmethod
     def validate_ip(cls, v: str | None) -> str | None:
         return None if v is None else _validate_ip(v)
+
+
+class SenhaRevelada(BaseModel):
+    senha: str
 
 
 class ProjetoResumo(BaseModel):
@@ -50,6 +57,7 @@ class VpsResponse(BaseModel):
     ip: str
     provedor: str | None
     criado_em: datetime
+    tem_senha: bool = False
 
     model_config = {"from_attributes": True}
 

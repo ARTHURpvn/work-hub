@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import type { VpsComProjetos } from "@/api/vps"
+import { vpsApi, type VpsComProjetos } from "@/api/vps"
 import { Icon } from "@/components/ui/Icon"
 import { Drawer } from "@/components/ui/Drawer"
 import { Button, Check, Empty, Field, OriginTag, TextInput } from "@/components/ui/kit"
@@ -8,6 +8,13 @@ import { useProjetos } from "@/hooks/useProjetos"
 import { useCreateVps, useDeleteVps, useSetVpsProjetos, useUpdateVps, useVpsList } from "@/hooks/useVps"
 import { confirm } from "@/store/confirmStore"
 import { toast } from "@/store/toastStore"
+
+function copiar(texto: string, msg: string) {
+  navigator.clipboard.writeText(texto).then(
+    () => toast.success(msg),
+    () => toast.error("Não foi possível copiar"),
+  )
+}
 
 export function Vps() {
   const { data: vps } = useVpsList()
@@ -85,7 +92,7 @@ export function Vps() {
 
 function VpsCreateDrawer({ onClose }: { onClose: () => void }) {
   const create = useCreateVps()
-  const [form, setForm] = useState({ nome: "", ip: "", provedor: "" })
+  const [form, setForm] = useState({ nome: "", ip: "", provedor: "", senha: "" })
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
   function save() {
@@ -94,7 +101,7 @@ function VpsCreateDrawer({ onClose }: { onClose: () => void }) {
       return
     }
     create.mutate(
-      { nome: form.nome || null, ip: form.ip.trim(), provedor: form.provedor || null },
+      { nome: form.nome || null, ip: form.ip.trim(), provedor: form.provedor || null, senha: form.senha || null },
       {
         onSuccess: () => {
           toast.success("Servidor criado")
@@ -126,6 +133,9 @@ function VpsCreateDrawer({ onClose }: { onClose: () => void }) {
           <TextInput value={form.provedor} onChange={(e) => set("provedor", e.target.value)} placeholder="Hetzner, DO…" />
         </Field>
       </div>
+      <Field label="Senha (opcional)" hint="Guardada cifrada (Fernet).">
+        <TextInput type="password" value={form.senha} onChange={(e) => set("senha", e.target.value)} placeholder="senha do servidor" />
+      </Field>
     </Drawer>
   )
 }
@@ -139,7 +149,19 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
   const [edit, setEdit] = useState(false)
   const [form, setForm] = useState({ nome: server.nome ?? "", ip: server.ip, provedor: server.provedor ?? "" })
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
+  const [senha, setSenha] = useState("")
+  const [senhaDirty, setSenhaDirty] = useState(false)
+  const [revealed, setRevealed] = useState<string | null>(null)
   const [sel, setSel] = useState<Set<string>>(new Set(server.projetos.map((p) => p.id)))
+
+  async function mostrarSenha() {
+    try {
+      const { senha: v } = await vpsApi.revelarSenha(server.id)
+      setRevealed(v)
+    } catch (e) {
+      toast.error("Não foi possível revelar", e instanceof Error ? e.message : undefined)
+    }
+  }
   const toggleProj = (id: string) =>
     setSel((s) => {
       const n = new Set(s)
@@ -152,7 +174,15 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
 
   function save() {
     update.mutate(
-      { id: server.id, data: { nome: form.nome || null, ip: form.ip, provedor: form.provedor || null } },
+      {
+        id: server.id,
+        data: {
+          nome: form.nome || null,
+          ip: form.ip,
+          provedor: form.provedor || null,
+          ...(senhaDirty ? { senha } : {}),
+        },
+      },
       {
         onSuccess: () => {
           setVpsProjetos.mutate(
@@ -228,6 +258,40 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
               <TextInput value={form.provedor} onChange={(e) => set("provedor", e.target.value)} placeholder="Hetzner, DO…" />
             </Field>
           </div>
+          <Field label="Senha" hint={server.tem_senha ? "Em branco mantém a atual. Cifrada (Fernet)." : "Opcional. Cifrada (Fernet)."}>
+            <div className="row" style={{ gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <TextInput
+                  type="password"
+                  value={senha}
+                  onChange={(e) => {
+                    setSenha(e.target.value)
+                    setSenhaDirty(true)
+                  }}
+                  placeholder={server.tem_senha ? "•••• (mantém a atual)" : "senha do servidor"}
+                />
+              </div>
+              {server.tem_senha && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  icon="eye"
+                  onClick={async () => {
+                    try {
+                      const { senha: v } = await vpsApi.revelarSenha(server.id)
+                      setSenha(v)
+                      setSenhaDirty(true)
+                    } catch (e) {
+                      toast.error("Não foi possível revelar", e instanceof Error ? e.message : undefined)
+                    }
+                  }}
+                >
+                  Revelar
+                </Button>
+              )}
+            </div>
+          </Field>
           <Field label={`Projetos nesta VPS (${sel.size})`} hint="Marcar move o projeto para esta VPS; desmarcar o desvincula.">
             <div className="stack" style={{ gap: 2, maxHeight: 280, overflow: "auto" }}>
               {selecionaveis.length === 0 && <p className="muted" style={{ fontSize: 13, margin: 0 }}>Nenhum projeto cadastrado.</p>}
@@ -265,6 +329,31 @@ function VpsDrawer({ server, onClose }: { server: VpsComProjetos; onClose: () =>
               </div>
             </div>
           </div>
+          {server.tem_senha && (
+            <div className="det-block">
+              <span className="t-label">Senha</span>
+              <div className="row" style={{ gap: 8, marginTop: 6, alignItems: "center" }}>
+                {revealed === null ? (
+                  <>
+                    <span className="mono" style={{ flex: 1, color: "var(--muted)" }}>••••••••</span>
+                    <Button type="button" size="sm" variant="ghost" icon="eye" onClick={mostrarSenha}>
+                      Mostrar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="mono" style={{ flex: 1, wordBreak: "break-all" }}>{revealed}</span>
+                    <Button type="button" size="sm" variant="ghost" icon="copy" onClick={() => copiar(revealed, "Senha copiada")}>
+                      Copiar
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" icon="eyeoff" onClick={() => setRevealed(null)}>
+                      Ocultar
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
           <div className="det-block" style={{ marginBottom: 0 }}>
             <span className="t-label">Projetos rodando aqui ({server.projetos.length})</span>
             <div style={{ marginTop: 8 }}>

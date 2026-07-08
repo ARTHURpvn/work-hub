@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +15,7 @@ class Vps(Base):
     nome: Mapped[str | None] = mapped_column(String(255), nullable=True)
     ip: Mapped[str] = mapped_column(String(45), nullable=False)
     provedor: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    senha_cifrada: Mapped[str | None] = mapped_column(Text, nullable=True)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )
