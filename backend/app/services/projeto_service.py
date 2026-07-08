@@ -50,6 +50,7 @@ async def create_projeto(session: AsyncSession, data: ProjetoCreate) -> Projeto:
         github_url=data.github_url,
         site_url=data.site_url,
         publicavel=data.publicavel,
+        rascunho=data.rascunho,
         criado_em=datetime.now(tz=timezone.utc),
     )
     session.add(projeto)
@@ -98,3 +99,35 @@ async def remove_membro(
     await session.delete(membro)
     await session.flush()
     return True
+
+
+_PROMPT_DESC = (
+    "Você é um assistente que escreve descrições curtas de projetos de software. "
+    "Com base no conteúdo do repositório abaixo, escreva UMA descrição objetiva em "
+    "português do Brasil, com 1 a 2 frases (máx. ~280 caracteres), sem markdown, sem "
+    "título e sem aspas. Responda APENAS com a descrição.\n\n"
+)
+
+
+async def gerar_descricao(contexto: str, *, token: str | None, api_key: str, model: str) -> str:
+    """Gera uma descrição curta a partir do contexto do repo (CLI se houver token, senão SDK)."""
+    prompt = _PROMPT_DESC + contexto
+    if token:
+        from app.services import claude_cli_service
+
+        texto = await claude_cli_service.gerar(token, prompt)
+    else:
+        if not api_key:
+            raise ValueError("Configure a IA em Configurações (token do Claude Code ou chave da API).")
+        from anthropic import AsyncAnthropic
+
+        msg = await AsyncAnthropic(api_key=api_key).messages.create(
+            model=model,
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        texto = "".join(b.text for b in msg.content if getattr(b, "type", None) == "text")
+    texto = texto.strip().strip('"').strip()
+    if not texto:
+        raise ValueError("A IA não retornou uma descrição.")
+    return texto[:500]

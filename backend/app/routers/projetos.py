@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -6,10 +7,46 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_session
 from app.deps import get_current_user
 from app.schemas.credencial import CredencialResponse, CredencialReveal, CredencialUpsert
-from app.schemas.projeto import MembroCreate, MembroResponse, ProjetoCreate, ProjetoResponse, ProjetoUpdate
-from app.services import credencial_service, projeto_service
+from app.schemas.projeto import (
+    GerarDescricaoRequest,
+    GerarDescricaoResponse,
+    MembroCreate,
+    MembroResponse,
+    ProjetoCreate,
+    ProjetoResponse,
+    ProjetoUpdate,
+)
+from app.services import config_service, credencial_service, github_service, projeto_service, uso_service
 
 router = APIRouter()
+
+
+@router.post("/gerar-descricao", response_model=GerarDescricaoResponse)
+async def gerar_descricao(
+    body: GerarDescricaoRequest,
+    _user: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> GerarDescricaoResponse:
+    gh_token = await config_service.get_valor(session, "GITHUB_TOKEN")
+    token = await config_service.get_claude_code_token(session)
+    api_key, model = await config_service.get_anthropic(session)
+    try:
+        contexto = await github_service.buscar_contexto(body.github_url, gh_token)
+        descricao = await projeto_service.gerar_descricao(
+            contexto, token=token, api_key=api_key, model=model
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("Falha ao gerar descrição de projeto")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Erro ao gerar descrição. Verifique os logs do servidor.",
+        )
+    await uso_service.registrar(
+        session, "projeto-gerar-descricao", "claude-code" if token else model, 0, 0
+    )
+    return GerarDescricaoResponse(descricao=descricao)
 
 
 async def _get_projeto_ou_404(session: AsyncSession, projeto_id: uuid.UUID):

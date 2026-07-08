@@ -37,18 +37,27 @@ async def build_summary(session: AsyncSession) -> DashboardSummary:
     agora = datetime.now(tz=timezone.utc)
     em_7_dias = agora + timedelta(days=7)
 
-    # --- Projetos ---
-    por_origem = await _count_by(session, Projeto.origem)
+    # --- Projetos (ideias/rascunhos são EXCLUÍDOS de todas as contagens de "ativo") ---
+    ativo = Projeto.rascunho.is_(False)
+    por_origem_rows = (
+        await session.execute(
+            select(Projeto.origem, func.count()).where(ativo).group_by(Projeto.origem)
+        )
+    ).all()
+    por_origem = {str(k): int(v) for k, v in por_origem_rows}
     total_proj = sum(por_origem.values())
-    arquivados = await _count_where(session, Projeto, Projeto.arquivado.is_(True))
+    arquivados = await _count_where(session, Projeto, ativo, Projeto.arquivado.is_(True))
     projetos = ProjetosResumo(
         total=total_proj,
         ativos=total_proj - arquivados,
         arquivados=arquivados,
-        com_vps=await _count_where(session, Projeto, Projeto.vps_id.is_not(None)),
-        com_autenticacao=await _count_where(session, Projeto, Projeto.tem_autenticacao.is_(True)),
+        ideias=await _count_where(session, Projeto, Projeto.rascunho.is_(True)),
+        com_vps=await _count_where(session, Projeto, ativo, Projeto.vps_id.is_not(None)),
+        com_autenticacao=await _count_where(
+            session, Projeto, ativo, Projeto.tem_autenticacao.is_(True)
+        ),
         publicaveis=await _count_where(
-            session, Projeto, Projeto.publicavel.is_(True), Projeto.arquivado.is_(False)
+            session, Projeto, ativo, Projeto.publicavel.is_(True), Projeto.arquivado.is_(False)
         ),
         por_origem=por_origem,
     )
@@ -126,7 +135,7 @@ async def build_summary(session: AsyncSession) -> DashboardSummary:
     proj_rows = (
         await session.execute(
             select(Projeto.id, Projeto.nome, Projeto.origem)
-            .where(Projeto.arquivado.is_(False))
+            .where(Projeto.arquivado.is_(False), Projeto.rascunho.is_(False))
             .order_by(Projeto.criado_em.desc())
         )
     ).all()
@@ -151,7 +160,9 @@ async def build_summary(session: AsyncSession) -> DashboardSummary:
             provedor=v.provedor,
             criado_em=v.criado_em,
             projetos=[
-                ProjetoResumo.model_validate(p) for p in v.projetos if not p.arquivado
+                ProjetoResumo.model_validate(p)
+                for p in v.projetos
+                if not p.arquivado and not p.rascunho
             ],
         )
         for v in vps_list
@@ -163,7 +174,11 @@ async def build_summary(session: AsyncSession) -> DashboardSummary:
             select(
                 Projeto.id, Projeto.nome, Projeto.origem, Projeto.github_url, Projeto.site_url
             )
-            .where(Projeto.vps_id.is_(None), Projeto.arquivado.is_(False))
+            .where(
+                Projeto.vps_id.is_(None),
+                Projeto.arquivado.is_(False),
+                Projeto.rascunho.is_(False),
+            )
             .order_by(Projeto.criado_em.desc())
         )
     ).all()

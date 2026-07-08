@@ -47,6 +47,7 @@ class ProjetoCreate(BaseModel):
     github_url: str | None = None
     site_url: str | None = None
     publicavel: bool = False
+    rascunho: bool = False
 
     _check_github = field_validator("github_url")(_validate_url)
     _check_site = field_validator("site_url")(_validate_url)
@@ -81,6 +82,7 @@ class ProjetoUpdate(BaseModel):
     site_url: str | None = None
     publicavel: bool | None = None
     arquivado: bool | None = None
+    rascunho: bool | None = None
 
     _check_github = field_validator("github_url")(_validate_url)
     _check_site = field_validator("site_url")(_validate_url)
@@ -103,6 +105,22 @@ class ProjetoUpdate(BaseModel):
         return self
 
 
+class GerarDescricaoRequest(BaseModel):
+    github_url: str
+
+    @field_validator("github_url")
+    @classmethod
+    def _req(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not (v.startswith("http://") or v.startswith("https://")):
+            raise ValueError("Informe a URL do repositório GitHub (http/https).")
+        return v
+
+
+class GerarDescricaoResponse(BaseModel):
+    descricao: str
+
+
 class ProjetoResponse(BaseModel):
     id: uuid.UUID
     nome: str
@@ -116,6 +134,7 @@ class ProjetoResponse(BaseModel):
     site_url: str | None
     publicavel: bool
     arquivado: bool
+    rascunho: bool = False
     criado_em: datetime
     membros: list[MembroResponse] = []
     vps: VpsResponse | None = None

@@ -9,6 +9,7 @@ class ProjetosResumo(BaseModel):
     total: int
     ativos: int
     arquivados: int
+    ideias: int = 0
     com_vps: int
     com_autenticacao: int
     publicaveis: int

@@ -16,7 +16,9 @@ async def listar(session: AsyncSession) -> list[dict]:
             Projeto.origem,
             func.count(Projeto.id),
             func.count(func.distinct(Projeto.vps_id)),  # count ignora NULL
-        ).group_by(Projeto.origem)
+        )
+        .where(Projeto.rascunho.is_(False))  # ideias não contam por dono
+        .group_by(Projeto.origem)
     )
     counts = {origem: (pc, vc) for origem, pc, vc in rows.all()}
     return [

@@ -10,6 +10,15 @@ def test_cria_projeto_valido():
     assert p.tem_vps is False
 
 
+def test_rascunho_default_false():
+    assert ProjetoCreate(nome="X", origem="Pessoal").rascunho is False
+
+
+def test_cria_ideia_rascunho_true():
+    p = ProjetoCreate(nome="Ideia nova", origem="Pessoal", rascunho=True)
+    assert p.rascunho is True
+
+
 def test_cria_projeto_com_vps_e_ip_valido():
     p = ProjetoCreate(nome="X", origem="Otavio", tem_vps=True, ssh_ip="192.168.1.10")
     assert p.ssh_ip == "192.168.1.10"

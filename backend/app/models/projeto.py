@@ -25,6 +25,7 @@ class Projeto(Base):
     site_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     publicavel: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     arquivado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    rascunho: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )

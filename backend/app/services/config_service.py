@@ -37,6 +37,16 @@ CHAVES: dict[str, dict] = {
             "continua usando a chave de API."
         ),
     },
+    "GITHUB_TOKEN": {
+        "label": "Token do GitHub (opcional)",
+        "secret": True,
+        "placeholder": "ghp_...",
+        "ajuda": (
+            "Opcional. Usado ao gerar a descrição de projeto pela IA a partir do repositório: "
+            "sobe o limite de requisições (60→5000/h) e permite ler repos privados seus. "
+            "Crie um token clássico ou fine-grained em github.com/settings/tokens."
+        ),
+    },
 }
 
 
