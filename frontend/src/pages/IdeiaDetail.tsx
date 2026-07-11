@@ -3,13 +3,8 @@ import { useNavigate, useParams } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { ideiaApi, type IdeiaChatMsg, type IdeiaStatus, type Projeto } from "@/api/projetos"
 import { Icon } from "@/components/ui/Icon"
-import { OriginTag } from "@/components/ui/kit"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import { Button, Empty, IconButton, OriginTag } from "@/components/ui/kit"
 import { useProjeto, useUpdateProjeto } from "@/hooks/useProjetos"
-import { cn } from "@/lib/utils"
 import { toast } from "@/store/toastStore"
 
 export function IdeiaDetail() {
@@ -51,16 +46,26 @@ export function IdeiaDetail() {
   }, [msgs, status, enviando])
 
   if (isLoading) {
-    return <div className="p-8 text-muted-foreground">Carregando…</div>
+    return (
+      <div className="page">
+        <p className="muted">Carregando…</p>
+      </div>
+    )
   }
   if (!projeto) {
     return (
-      <div className="flex flex-col items-center gap-4 p-16 text-center">
-        <Icon name="folder" size={40} className="text-muted-foreground" />
-        <p className="text-lg font-semibold">Ideia não encontrada</p>
-        <Button onClick={() => navigate("/projetos")}>
-          <Icon name="chevron_l" size={16} /> Voltar para projetos
-        </Button>
+      <div className="page">
+        <div className="card card-pad">
+          <Empty
+            icon="folder"
+            title="Ideia não encontrada"
+            action={
+              <Button icon="chevron_l" onClick={() => navigate("/projetos")}>
+                Voltar para projetos
+              </Button>
+            }
+          />
+        </div>
       </div>
     )
   }
@@ -151,153 +156,136 @@ export function IdeiaDetail() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-60px)] flex-col">
-      {/* header */}
-      <header className="flex shrink-0 items-center gap-3 border-b bg-card px-5 py-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/projetos")} aria-label="Voltar">
-          <Icon name="chevron_l" size={20} />
+    <div className="skill-detail">
+      <div className="skill-detail-head">
+        <IconButton name="chevron_l" size={20} onClick={() => navigate("/projetos")} />
+        <div className="row grow" style={{ gap: 10, minWidth: 0 }}>
+          <OriginTag origin={projeto.origem} />
+          <span style={{ fontWeight: 700, fontSize: 16 }} className="truncate">
+            {projeto.nome || "(sem nome)"}
+          </span>
+          <span className="chip static">
+            <Icon name="sparkle" size={12} /> Ideia
+          </span>
+        </div>
+        <Button icon="check" onClick={promover} disabled={update.isPending}>
+          Promover para ativo
         </Button>
-        <OriginTag origin={projeto.origem} />
-        <h1 className="truncate text-base font-bold">{projeto.nome || "(sem nome)"}</h1>
-        <Badge variant="secondary" className="gap-1">
-          <Icon name="sparkle" size={12} /> Ideia
-        </Badge>
-        <div className="flex-1" />
-        <Button onClick={promover} disabled={update.isPending}>
-          <Icon name="check" size={16} /> Promover para ativo
-        </Button>
-      </header>
+      </div>
 
-      {/* corpo: brief | assistente */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
+      <div className="skill-detail-body">
         {/* Brief */}
-        <section className="flex min-h-0 flex-col border-b lg:border-b-0 lg:border-r">
-          <div className="flex shrink-0 items-center gap-2 border-b px-5 py-3">
-            <Icon name="edit" size={16} className="text-primary" />
-            <h2 className="flex-1 text-sm font-semibold">Brief — o que o projeto precisa ter</h2>
-            <Button size="sm" onClick={salvarBrief} disabled={!briefDirty || savingBrief}>
-              <Icon name="check" size={14} /> {savingBrief ? "Salvando…" : "Salvar"}
+        <div className="skill-pane left">
+          <div className="skill-pane-head">
+            <Icon name="edit" size={16} style={{ color: "var(--accent)" }} />
+            <span className="grow" style={{ fontWeight: 700 }}>
+              Brief — o que o projeto precisa ter
+            </span>
+            <Button size="sm" variant="primary" icon="check" onClick={salvarBrief} disabled={!briefDirty || savingBrief}>
+              {savingBrief ? "Salvando…" : "Salvar"}
             </Button>
           </div>
-          <div className="min-h-0 flex-1 p-4">
-            <Textarea
+          <div className="skill-editor-area">
+            <textarea
               value={brief}
               onChange={(e) => {
                 setBrief(e.target.value)
                 setBriefDirty(true)
               }}
-              placeholder="Escreva aqui o que o projeto precisa ter — objetivo, funcionalidades, escopo, stack, riscos. Ou peça pra IA ao lado e clique em 'Aprovar e salvar no brief'."
-              className="h-full resize-none font-mono text-[13px] leading-relaxed"
+              placeholder="Escreva aqui o que o projeto precisa ter — objetivo, funcionalidades, escopo, stack, riscos. Ou peça pra IA ao lado e clique em 'Inserir no brief'."
             />
           </div>
-        </section>
+        </div>
 
         {/* Assistente */}
-        <section className="flex min-h-0 flex-col">
-          <div className="flex shrink-0 items-center gap-2 border-b px-5 py-3">
-            <Icon name="sparkle" size={16} className="text-primary" />
-            <h2 className="flex-1 text-sm font-semibold">Assistente</h2>
-            {msgs.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={limpar}>
-                <Icon name="trash" size={14} /> Limpar
-              </Button>
-            )}
+        <div className="skill-pane">
+          <div className="chat-wrap">
+            <div className="skill-pane-head">
+              <Icon name="sparkle" size={16} style={{ color: "var(--accent)" }} />
+              <span className="grow" style={{ fontWeight: 700 }}>
+                Assistente
+              </span>
+              {msgs.length > 0 && (
+                <Button size="sm" variant="ghost" icon="trash" onClick={limpar}>
+                  Limpar
+                </Button>
+              )}
+            </div>
+
+            <div className="chat-thread" ref={threadRef}>
+              {msgs.length === 0 && !enviando && (
+                <div className="cmsg ai">
+                  <div className="cav">IA</div>
+                  <div className="cbubble">
+                    Me conta a ideia. Eu considero suas outras anotações e recomendo as skills certas para ajudar a definir o que o projeto precisa ter. Cada resposta pode ser aprovada e salva direto no brief. Por onde começamos?
+                  </div>
+                </div>
+              )}
+
+              {msgs.map((m) => (
+                <div key={m.id} className={"cmsg " + (m.role === "assistant" ? "ai" : "me")}>
+                  <div className="cav">{m.role === "assistant" ? "IA" : "eu"}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                    <div className="cbubble">{m.content}</div>
+                    {m.role === "assistant" && (
+                      <button
+                        className="csug"
+                        type="button"
+                        disabled={savingBrief}
+                        onClick={() => aprovarNoBrief(m.content)}
+                      >
+                        <Icon name="check" size={12} /> Aprovar e salvar no brief
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {enviando && (
+                <div className="cmsg ai">
+                  <div className="cav">IA</div>
+                  <div className="cbubble">
+                    {status ? (
+                      <span className="ai-progress">
+                        <span className="ai-progress-fase">
+                          {status.fase === "conectando" ? "conectando…" : "escrevendo…"}
+                        </span>
+                        <span className="ai-progress-meta">
+                          {status.elapsed}s · {status.chars} chars
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="typing">
+                        <span />
+                        <span />
+                        <span />
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="composer">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    enviar()
+                  }
+                }}
+                placeholder="Pergunte ou descreva a ideia… (Enter envia, Shift+Enter quebra linha)"
+                rows={1}
+              />
+              <button className="csend" type="button" onClick={enviar} disabled={enviando || !draft.trim()}>
+                <Icon name="send" size={16} />
+              </button>
+            </div>
           </div>
-
-          <div ref={threadRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
-            {msgs.length === 0 && !enviando && (
-              <ChatRow ai>
-                Me conta a ideia. Eu considero suas outras anotações e recomendo as skills certas para
-                definir o que o projeto precisa ter. Cada resposta pode ser aprovada e salva direto no
-                brief. Por onde começamos?
-              </ChatRow>
-            )}
-
-            {msgs.map((m) => (
-              <ChatRow key={m.id} ai={m.role === "assistant"}>
-                <div className="whitespace-pre-wrap">{m.content}</div>
-                {m.role === "assistant" && (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    className="mt-2"
-                    disabled={savingBrief}
-                    onClick={() => aprovarNoBrief(m.content)}
-                  >
-                    <Icon name="check" size={12} /> Aprovar e salvar no brief
-                  </Button>
-                )}
-              </ChatRow>
-            ))}
-
-            {enviando && (
-              <ChatRow ai>
-                {status ? (
-                  <span className="flex items-center gap-2 text-sm">
-                    <span className="font-medium">
-                      {status.fase === "conectando" ? "conectando…" : "escrevendo…"}
-                    </span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {status.elapsed}s · {status.chars} chars
-                    </span>
-                  </span>
-                ) : (
-                  <span className="flex gap-1 py-1">
-                    <Dot /> <Dot /> <Dot />
-                  </span>
-                )}
-              </ChatRow>
-            )}
-          </div>
-
-          <div className="flex shrink-0 items-end gap-2 border-t p-3">
-            <Textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  enviar()
-                }
-              }}
-              placeholder="Pergunte ou descreva a ideia… (Enter envia, Shift+Enter quebra linha)"
-              className="max-h-32 min-h-0 flex-1 resize-none"
-              rows={1}
-            />
-            <Button size="icon" className="shrink-0 rounded-full" onClick={enviar} disabled={enviando || !draft.trim()}>
-              <Icon name="send" size={16} />
-            </Button>
-          </div>
-        </section>
-      </div>
-    </div>
-  )
-}
-
-function ChatRow({ ai, children }: { ai?: boolean; children: React.ReactNode }) {
-  return (
-    <div className={cn("flex gap-2.5", ai ? "" : "flex-row-reverse")}>
-      <Avatar className="size-8 shrink-0">
-        <AvatarFallback
-          className={cn("text-xs font-bold", ai ? "bg-primary text-primary-foreground" : "bg-secondary")}
-        >
-          {ai ? "IA" : "eu"}
-        </AvatarFallback>
-      </Avatar>
-      <div className={cn("flex max-w-[85%] flex-col", ai ? "items-start" : "items-end")}>
-        <div
-          className={cn(
-            "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
-            ai ? "border bg-card" : "bg-primary text-primary-foreground"
-          )}
-        >
-          {children}
         </div>
       </div>
     </div>
   )
-}
-
-function Dot() {
-  return <span className="size-1.5 animate-pulse rounded-full bg-primary" />
 }

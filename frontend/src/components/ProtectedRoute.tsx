@@ -23,7 +23,7 @@ export function ProtectedRoute({ children }: Props) {
   if (checking) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <span className="text-muted-foreground text-sm">Verificando sessão...</span>
+        <span className="text-sm">Verificando sessão...</span>
       </div>
     )
   }
