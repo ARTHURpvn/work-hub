@@ -1,4 +1,36 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+/* shadcn/ui — a variante dark casa com o body.dark do app; os utilitários de cor
+   são mapeados para os tokens workhub (mesma paleta laranja/quentes, sem colisão). */
+@custom-variant dark (&:where(body.dark, body.dark *));
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-text);
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--border);
+  --color-input: var(--border-2);
+  --color-ring: var(--accent);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --font-sans: var(--ui);
+}
 
 /* ============================================================
    workhub — production styles (port do design "claude design")
