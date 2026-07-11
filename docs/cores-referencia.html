@@ -1,0 +1,457 @@
+<title>Sistema de cores — workhub</title>
+<style>
+  :root {
+    /* chrome do documento — usa a própria paleta workhub (tema claro) */
+    --page-bg: #f4f1ea;
+    --page-surface: #fbfaf6;
+    --page-surface-2: #f3efe6;
+    --page-text: #2a2620;
+    --page-text-2: #5f594f;
+    --page-muted: #8a8276;
+    --page-border: #e3dccd;
+    --page-border-2: #d4cab8;
+    --page-accent: #c96442;
+    --page-accent-text: #fff;
+    --page-ring: rgba(201, 100, 66, 0.28);
+    --chip-edge: rgba(40, 34, 24, 0.14);
+    --card-shadow: 0 1px 2px rgba(60,50,35,0.06), 0 1px 3px rgba(60,50,35,0.05);
+
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --maxw: 1080px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page-bg: #121316;
+      --page-surface: #1b1c20;
+      --page-surface-2: #232428;
+      --page-text: #ededf0;
+      --page-text-2: #b5b6bd;
+      --page-muted: #82838c;
+      --page-border: #2a2b30;
+      --page-border-2: #383940;
+      --page-accent: #e8895f;
+      --page-accent-text: #121316;
+      --page-ring: rgba(232, 137, 95, 0.34);
+      --chip-edge: rgba(255, 255, 255, 0.16);
+      --card-shadow: 0 1px 2px rgba(0,0,0,0.35);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #121316;
+    --page-surface: #1b1c20;
+    --page-surface-2: #232428;
+    --page-text: #ededf0;
+    --page-text-2: #b5b6bd;
+    --page-muted: #82838c;
+    --page-border: #2a2b30;
+    --page-border-2: #383940;
+    --page-accent: #e8895f;
+    --page-accent-text: #121316;
+    --page-ring: rgba(232, 137, 95, 0.34);
+    --chip-edge: rgba(255, 255, 255, 0.16);
+    --card-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --page-bg: #f4f1ea;
+    --page-surface: #fbfaf6;
+    --page-surface-2: #f3efe6;
+    --page-text: #2a2620;
+    --page-text-2: #5f594f;
+    --page-muted: #8a8276;
+    --page-border: #e3dccd;
+    --page-border-2: #d4cab8;
+    --page-accent: #c96442;
+    --page-accent-text: #fff;
+    --page-ring: rgba(201, 100, 66, 0.28);
+    --chip-edge: rgba(40, 34, 24, 0.14);
+    --card-shadow: 0 1px 2px rgba(60,50,35,0.06), 0 1px 3px rgba(60,50,35,0.05);
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--page-text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--page-ring); }
+  a { color: var(--page-accent); }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  /* header */
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--page-bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--page-border);
+  }
+  .topbar__in {
+    max-width: var(--maxw); margin: 0 auto; padding: 13px 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .mark {
+    width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+    background: var(--page-accent); color: var(--page-accent-text);
+    display: grid; place-items: center; font-weight: 800; font-size: 17px;
+  }
+  .topbar__title { font-weight: 800; letter-spacing: -0.02em; font-size: 16px; }
+  .topbar__title b { color: var(--page-accent); }
+  .topbar__spacer { flex: 1; }
+  .btn {
+    font-family: var(--sans); font-size: 13px; font-weight: 650;
+    color: var(--page-text-2); background: var(--page-surface);
+    border: 1px solid var(--page-border-2); border-radius: 9px;
+    padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+    transition: background .14s, color .14s, border-color .14s;
+  }
+  .btn:hover { background: var(--page-surface-2); color: var(--page-text); }
+  .btn:focus-visible { outline: 2px solid var(--page-ring); outline-offset: 2px; }
+  .btn svg { width: 15px; height: 15px; }
+
+  /* hero */
+  .hero { padding: 46px 0 30px; border-bottom: 1px solid var(--page-border); }
+  .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase;
+    color: var(--page-accent);
+  }
+  .hero h1 {
+    margin: 12px 0 0; font-size: clamp(28px, 5vw, 42px); font-weight: 800;
+    letter-spacing: -0.03em; line-height: 1.05; text-wrap: balance;
+  }
+  .hero p { margin: 14px 0 0; max-width: 62ch; color: var(--page-text-2); font-size: 16px; }
+  .note {
+    margin-top: 20px; padding: 12px 15px; border-radius: 11px;
+    background: var(--page-surface); border: 1px solid var(--page-border);
+    font-size: 13.5px; color: var(--page-text-2);
+  }
+  .note code { font-family: var(--mono); color: var(--page-accent); font-size: 12.5px; }
+
+  /* section */
+  section.grp { padding: 40px 0 8px; }
+  .grp__head { margin-bottom: 18px; }
+  .grp__num {
+    font-family: var(--mono); font-size: 12px; color: var(--page-muted); font-weight: 600;
+  }
+  .grp h2 { margin: 3px 0 0; font-size: 21px; font-weight: 750; letter-spacing: -0.02em; }
+  .grp__desc { margin: 6px 0 0; color: var(--page-text-2); font-size: 14px; max-width: 64ch; }
+
+  .grid {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+
+  /* swatch card */
+  .card {
+    background: var(--page-surface); border: 1px solid var(--page-border);
+    border-radius: 13px; padding: 14px; box-shadow: var(--card-shadow);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .card__name {
+    font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--page-text);
+  }
+  .card__use { margin: 3px 0 0; font-size: 12.5px; color: var(--page-muted); line-height: 1.4; }
+  .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .chip {
+    display: flex; flex-direction: column; gap: 7px; text-align: left;
+    background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: inherit;
+  }
+  .chip__block {
+    height: 46px; border-radius: 9px; border: 1px solid var(--chip-edge);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    transition: transform .12s;
+  }
+  .chip:hover .chip__block { transform: translateY(-2px); }
+  .chip:focus-visible { outline: none; }
+  .chip:focus-visible .chip__block { outline: 2px solid var(--page-ring); outline-offset: 2px; }
+  .chip__cap { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+  .chip__theme {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--page-muted); font-style: normal;
+  }
+  .chip__hex {
+    font-family: var(--mono); font-size: 11.5px; color: var(--page-text-2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* semantic */
+  .sem { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .sem-themes { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .sem-cell { display: flex; flex-direction: column; gap: 8px; }
+  .sem-cell .chip__theme { margin-bottom: -2px; }
+  .pill {
+    align-self: flex-start; font-size: 12px; font-weight: 700;
+    padding: 4px 10px; border-radius: 999px; border: 1px solid transparent;
+  }
+  .sem-hex { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tagbtn {
+    font-family: var(--mono); font-size: 11px; color: var(--page-text-2);
+    background: var(--page-surface-2); border: 1px solid var(--page-border);
+    border-radius: 7px; padding: 3px 7px; cursor: pointer; font-variant-numeric: tabular-nums;
+  }
+  .tagbtn:hover { border-color: var(--page-border-2); color: var(--page-text); }
+  .tagbtn:focus-visible { outline: 2px solid var(--page-ring); outline-offset: 1px; }
+  .tagbtn small { color: var(--page-muted); }
+
+  /* origem tags */
+  .otag {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 11px 5px 8px; border-radius: 999px; font-size: 12.5px; font-weight: 650;
+  }
+  .otag i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  /* radii */
+  .radii { display: flex; flex-wrap: wrap; gap: 14px; }
+  .rad { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .rad__box {
+    width: 74px; height: 60px; background: var(--page-accent);
+    border-top-left-radius: var(--rr); border-top-right-radius: var(--rr);
+  }
+  .rad__lbl { font-family: var(--mono); font-size: 11.5px; color: var(--page-text-2); }
+
+  footer {
+    margin: 46px 0 60px; padding-top: 22px; border-top: 1px solid var(--page-border);
+    color: var(--page-muted); font-size: 12.5px;
+  }
+  footer code { font-family: var(--mono); color: var(--page-text-2); }
+
+  /* toast */
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px);
+    background: var(--page-text); color: var(--page-bg);
+    padding: 9px 16px; border-radius: 10px; font-size: 13px; font-weight: 650;
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 50;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<header class="topbar">
+  <div class="topbar__in">
+    <div class="mark">w</div>
+    <div class="topbar__title"><b>w</b>orkhub · cores</div>
+    <div class="topbar__spacer"></div>
+    <button class="btn" id="copyCss" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copiar CSS
+    </button>
+    <button class="btn" id="themeToggle" type="button" aria-label="Alternar tema">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></svg>
+      <span id="themeLabel">Tema</span>
+    </button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div class="eyebrow">Design tokens · referência</div>
+    <h1>Sistema de cores do workhub</h1>
+    <p>Paleta laranja sobre neutros quentes no claro e cinza neutro no escuro. Toda cor é uma CSS custom property — clique em qualquer valor para copiar e reaproveite o mesmo padrão em outros projetos.</p>
+    <div class="note">Regra de ouro: componente nunca usa hex cru, sempre <code>var(--token)</code>. Trocar de tema ou de marca = editar só os blocos <code>:root</code> / <code>body.dark</code>.</div>
+  </div>
+
+  <div id="sections"></div>
+
+  <footer>
+    Fonte da verdade no código: <code>frontend/src/index.css</code> (blocos <code>:root</code> e <code>body.dark</code>). Fonte do produto: Open Sans.
+  </footer>
+</main>
+
+<div class="toast" id="toast">copiado</div>
+
+<script>
+  const surfaces = [
+    { n: "--bg", u: "Fundo da página (body)", l: "#f4f1ea", d: "#121316" },
+    { n: "--bg-2", u: "Sidebar, áreas recuadas", l: "#efebe1", d: "#0e0f11" },
+    { n: "--surface", u: "Cards, modais, drawers", l: "#fbfaf6", d: "#1b1c20" },
+    { n: "--surface-2", u: "Hover de item, inputs", l: "#f3efe6", d: "#232428" },
+    { n: "--surface-3", u: "Badge, realce mais alto", l: "#ece6d9", d: "#2d2e33" },
+  ];
+  const texts = [
+    { n: "--text", u: "Texto principal, títulos", l: "#2a2620", d: "#ededf0" },
+    { n: "--text-2", u: "Texto secundário, rótulos", l: "#5f594f", d: "#b5b6bd" },
+    { n: "--muted", u: "Metadados, placeholders", l: "#8a8276", d: "#82838c" },
+  ];
+  const borders = [
+    { n: "--border", u: "Bordas padrão", l: "#e3dccd", d: "#2a2b30" },
+    { n: "--border-2", u: "Hover, foco leve, scrollbar", l: "#d4cab8", d: "#383940" },
+  ];
+  const accents = [
+    { n: "--accent", u: "Botão primário, item ativo", l: "#c96442", d: "#e8895f" },
+    { n: "--accent-press", u: "Pressionado / hover", l: "#b4543a", d: "#f0986f" },
+    { n: "--accent-weak", u: "Fundo suave do acento", l: "#f1e2da", d: "#2c241f" },
+    { n: "--accent-text", u: "Texto sobre o acento", l: "#ffffff", d: "#121316" },
+    { n: "--ring", u: "Anel de foco, seleção", l: "rgba(201,100,66,.28)", d: "rgba(232,137,95,.34)" },
+  ];
+  const semantics = [
+    { n: "--ok", role: "Sucesso", l: "#3f8f55", d: "#5fb074", lw: "#e2efe4", dw: "#233127" },
+    { n: "--warn", role: "Atenção", l: "#c2871f", d: "#d6a445", lw: "#f4e9d2", dw: "#362d1a" },
+    { n: "--danger", role: "Erro / perigo", l: "#cf5a3c", d: "#e0795a", lw: "#f6e1da", dw: "#3a2620" },
+    { n: "--info", role: "Informação", l: "#4a72c4", d: "#7a9be0", lw: "#e2e9f5", dw: "#1f2433" },
+  ];
+  const tags = [
+    { n: "--o-otavio", label: "Laranja", l: "#c96442", d: "#e8895f" },
+    { n: "--o-titan", label: "Roxo", l: "#8a4fd8", d: "#b08ce8" },
+    { n: "--o-free", label: "Âmbar", l: "#c2871f", d: "#d6a445" },
+    { n: "--o-pess", label: "Verde", l: "#3f8f55", d: "#5fb074" },
+  ];
+  const radii = [
+    { n: "--r-sm", v: "7px" }, { n: "--r-md", v: "10px" },
+    { n: "--r-lg", v: "14px" }, { n: "--r-xl", v: "20px" },
+  ];
+
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+  function chip(theme, hex) {
+    return `<button class="chip" type="button" data-copy="${hex}">
+      <span class="chip__block" style="background:${hex}"></span>
+      <span class="chip__cap"><em class="chip__theme">${theme}</em><code class="chip__hex">${hex}</code></span>
+    </button>`;
+  }
+  function tokenCard(t) {
+    return `<article class="card">
+      <div><div class="card__name">${t.n}</div><p class="card__use">${t.u}</p></div>
+      <div class="chips">${chip("Claro", t.l)}${chip("Escuro", t.d)}</div>
+    </article>`;
+  }
+  function semCard(t) {
+    const cell = (theme, solid, weak) => `<div class="sem-cell">
+      <em class="chip__theme">${theme}</em>
+      <span class="pill" style="color:${solid};background:${weak};border-color:${solid}33">exemplo</span>
+      <div class="sem-hex">
+        <button class="tagbtn" type="button" data-copy="${solid}">${solid}</button>
+        <button class="tagbtn" type="button" data-copy="${weak}">${weak} <small>·weak</small></button>
+      </div>
+    </div>`;
+    return `<article class="card">
+      <div><div class="card__name">${t.n} <span style="color:var(--page-muted);font-weight:400">· ${t.n}-weak</span></div><p class="card__use">${t.role}</p></div>
+      <div class="sem-themes">${cell("Claro", t.l, t.lw)}${cell("Escuro", t.d, t.dw)}</div>
+    </article>`;
+  }
+  function tagCard(t) {
+    return `<article class="card">
+      <div><div class="card__name">${t.n}</div><p class="card__use">${t.label}</p></div>
+      <div class="chips">
+        <button class="chip" type="button" data-copy="${t.l}">
+          <span class="otag" style="background:${t.l}1f;color:${t.l}"><i style="background:${t.l}"></i>Claro</span>
+          <code class="chip__hex" style="margin-top:7px">${t.l}</code>
+        </button>
+        <button class="chip" type="button" data-copy="${t.d}">
+          <span class="otag" style="background:${t.d}22;color:${t.d}"><i style="background:${t.d}"></i>Escuro</span>
+          <code class="chip__hex" style="margin-top:7px">${t.d}</code>
+        </button>
+      </div>
+    </article>`;
+  }
+
+  function group(num, title, desc, gridClass, html) {
+    return `<section class="grp">
+      <div class="grp__head">
+        <div class="grp__num">${num}</div>
+        <h2>${title}</h2>
+        ${desc ? `<p class="grp__desc">${desc}</p>` : ""}
+      </div>
+      <div class="grid ${gridClass || ""}">${html}</div>
+    </section>`;
+  }
+
+  const radHtml = radii.map(r =>
+    `<div class="rad"><div class="rad__box" style="--rr:${r.v}"></div><div class="rad__lbl">${r.n} · ${r.v}</div></div>`
+  ).join("");
+
+  document.getElementById("sections").innerHTML = [
+    group("01", "Superfícies", "Do fundo da página ao realce mais alto — empilhe nesta ordem para dar profundidade sem sombras pesadas.", "", surfaces.map(tokenCard).join("")),
+    group("02", "Texto", "Três níveis de ênfase. Sempre sobre superfícies, nunca sobre o acento.", "", texts.map(tokenCard).join("")),
+    group("03", "Bordas", "", "", borders.map(tokenCard).join("")),
+    group("04", "Acento", "O laranja da marca — use com parcimônia: ação primária, item ativo, foco. Texto por cima sempre com --accent-text.", "", accents.map(tokenCard).join("")),
+    group("05", "Semânticos", "Cada status tem a cor sólida (texto/ícone/borda) e a versão -weak (fundo do badge). Padrão: color: solid; background: weak.", "sem", semantics.map(semCard).join("")),
+    group("06", "Tags por origem", "Paleta categórica fixa para marcar por dono/origem.", "", tags.map(tagCard).join("")),
+    group("07", "Raios", "", "", `<div class="radii">${radHtml}</div>`),
+  ].join("");
+
+  // clipboard
+  const toast = document.getElementById("toast");
+  let toastT;
+  function flash(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(toastT);
+    toastT = setTimeout(() => toast.classList.remove("show"), 1400);
+  }
+  function copy(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => flash("copiado " + text)).catch(() => fallback(text));
+    } else { fallback(text); }
+  }
+  function fallback(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); flash("copiado " + text); }
+    catch (e) { flash("copie manual: " + text); }
+    document.body.removeChild(ta);
+  }
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-copy]");
+    if (el) copy(el.getAttribute("data-copy"));
+  });
+
+  // full CSS block
+  const cssBlock = `:root {
+  --bg: #f4f1ea;  --bg-2: #efebe1;
+  --surface: #fbfaf6;  --surface-2: #f3efe6;  --surface-3: #ece6d9;
+  --text: #2a2620;  --text-2: #5f594f;  --muted: #8a8276;
+  --border: #e3dccd;  --border-2: #d4cab8;
+  --accent: #c96442;  --accent-press: #b4543a;  --accent-weak: #f1e2da;  --accent-text: #fff;
+  --ring: rgba(201, 100, 66, 0.28);
+  --ok: #3f8f55;  --ok-weak: #e2efe4;
+  --warn: #c2871f;  --warn-weak: #f4e9d2;
+  --danger: #cf5a3c;  --danger-weak: #f6e1da;
+  --info: #4a72c4;  --info-weak: #e2e9f5;
+  --o-otavio: #c96442;  --o-titan: #8a4fd8;  --o-free: #c2871f;  --o-pess: #3f8f55;
+  --r-sm: 7px;  --r-md: 10px;  --r-lg: 14px;  --r-xl: 20px;
+  color-scheme: light;
+}
+body.dark {
+  --bg: #121316;  --bg-2: #0e0f11;
+  --surface: #1b1c20;  --surface-2: #232428;  --surface-3: #2d2e33;
+  --text: #ededf0;  --text-2: #b5b6bd;  --muted: #82838c;
+  --border: #2a2b30;  --border-2: #383940;
+  --accent: #e8895f;  --accent-press: #f0986f;  --accent-weak: #2c241f;  --accent-text: #121316;
+  --ring: rgba(232, 137, 95, 0.34);
+  --ok: #5fb074;  --ok-weak: #233127;
+  --warn: #d6a445;  --warn-weak: #362d1a;
+  --danger: #e0795a;  --danger-weak: #3a2620;
+  --info: #7a9be0;  --info-weak: #1f2433;
+  --o-otavio: #e8895f;  --o-titan: #b08ce8;  --o-free: #d6a445;  --o-pess: #5fb074;
+  color-scheme: dark;
+}`;
+  document.getElementById("copyCss").addEventListener("click", () => copy(cssBlock));
+
+  // theme toggle
+  const root = document.documentElement;
+  const label = document.getElementById("themeLabel");
+  function effectiveDark() {
+    const attr = root.getAttribute("data-theme");
+    if (attr) return attr === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function syncLabel() { label.textContent = effectiveDark() ? "Escuro" : "Claro"; }
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    root.setAttribute("data-theme", effectiveDark() ? "light" : "dark");
+    syncLabel();
+  });
+  syncLabel();
+</script>
