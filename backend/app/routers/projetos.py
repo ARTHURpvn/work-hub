@@ -267,7 +267,12 @@ async def ideia_chat_stream(
     notas = await ideia_service.contexto_notas(session, projeto_id)
     skill_rows = await skill_remota_service.listar(session)
     skills = [
-        {"name": r.name, "display_title": r.display_title, "descricao": r.descricao}
+        {
+            "name": r.name,
+            "display_title": r.display_title,
+            "descricao": r.descricao,
+            "conteudo": r.conteudo,
+        }
         for r in skill_rows
     ]
 

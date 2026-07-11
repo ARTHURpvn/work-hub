@@ -3,6 +3,7 @@
 O assistente conversa em PT-BR e ajuda a definir escopo/funcionalidades/stack.
 Provider: CLI do Claude Code se houver token, senão SDK Anthropic (streaming SSE).
 """
+import re
 import time
 import uuid
 from typing import AsyncIterator
@@ -89,7 +90,31 @@ def _contexto(projeto: Projeto) -> str:
     return "\n".join(partes)
 
 
-def _system(projeto: Projeto, notas: str, skills: list[dict]) -> str:
+_METODOLOGIA_MAX = 3500
+
+
+def _palavras(s: str) -> set[str]:
+    return set(re.findall(r"[a-záéíóúâêôãõçà]{4,}", (s or "").lower()))
+
+
+def _selecionar_metodologias(skills: list[dict], texto: str, limite: int = 2) -> list[dict]:
+    """Escolhe as skills mais relevantes ao pedido (match de palavras em nome/descrição)."""
+    alvo = _palavras(texto)
+    if not alvo:
+        return []
+    pontuadas = []
+    for s in skills:
+        if not s.get("conteudo"):
+            continue
+        base = _palavras(f"{s.get('name', '')} {s.get('display_title', '')} {s.get('descricao', '')}")
+        score = len(alvo & base)
+        if score:
+            pontuadas.append((score, s))
+    pontuadas.sort(key=lambda x: -x[0])
+    return [s for _, s in pontuadas[:limite]]
+
+
+def _system(projeto: Projeto, notas: str, skills: list[dict], metodologias: list[dict]) -> str:
     partes = [_SYSTEM, "", _contexto(projeto)]
     if notas.strip():
         partes.append(
@@ -102,12 +127,26 @@ def _system(projeto: Projeto, notas: str, skills: list[dict]) -> str:
             for s in skills
         )
         partes.append(
-            "\n## Skills disponíveis do usuário — quando uma delas ajudar na ideia, RECOMENDE-A "
-            "pelo `name` e explique como aplicá-la:\n" + lista
+            "\n## Skills do usuário (o que existe). Você NÃO pede para o usuário rodar skills — "
+            "você mesmo aplica a metodologia delas e entrega o resultado pronto:\n" + lista
+        )
+    if metodologias:
+        blocos = "\n\n".join(
+            f"### Metodologia da skill `{s['name']}`\n{s['conteudo'][:_METODOLOGIA_MAX]}"
+            for s in metodologias
+        )
+        partes.append(
+            "\n## Metodologias a APLICAR agora (execute-as você mesmo nesta resposta, não "
+            "descreva como rodar):\n" + blocos
         )
     partes.append(
-        "\nQuando propuser conteúdo pronto para as anotações, escreva-o como um bloco claro em "
-        "markdown — o usuário vai aprovar e salvar no brief desta ideia."
+        "\nREGRAS IMPORTANTES:\n"
+        "- NUNCA diga para o usuário rodar uma skill ou usar comandos (ex.: `/planejar-projeto`, "
+        "`/feature`). VOCÊ é quem executa — aplique a metodologia da skill relevante e entregue o "
+        "ENTREGÁVEL pronto (SRS, arquitetura, modelo de dados, roadmap, lista de features, etc.).\n"
+        "- Se faltar contexto essencial, faça no máximo 1–2 perguntas objetivas e já adiante o que "
+        "der com o que tem — não pare só na pergunta.\n"
+        "- Escreva o entregável como um bloco claro em markdown; o usuário aprova e salva no brief."
     )
     return "\n".join(partes)
 
@@ -133,7 +172,10 @@ async def assistente_stream(
     model: str,
 ) -> AsyncIterator[dict]:
     """Emite eventos {type: status|done|error}. `done` traz {'reply': str}."""
-    system = _system(projeto, notas, skills or [])
+    skills = skills or []
+    alvo = f"{nova}\n{projeto.brief or ''}\n{projeto.descricao or ''}"
+    metodologias = _selecionar_metodologias(skills, alvo)
+    system = _system(projeto, notas, skills, metodologias)
     mensagens = [
         {"role": m["role"], "content": m["content"]}
         for m in historico
