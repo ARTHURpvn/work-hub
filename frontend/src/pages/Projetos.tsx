@@ -13,6 +13,13 @@ import {
   TextArea,
   TextInput,
 } from "@/components/ui/kit"
+import {
+  Select as UiSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useCreateProjeto, useProjetos, useUpdateProjeto } from "@/hooks/useProjetos"
 import { useDeleteCredencial, useUpsertCredencial } from "@/hooks/useCredencial"
 import { useDonos } from "@/hooks/useDonos"
@@ -313,13 +320,18 @@ function ProjetoCreateDrawer({
         <TextInput value={form.nome} autoFocus onChange={(e) => set("nome", e.target.value)} placeholder="Nome do projeto" />
       </Field>
       <Field label="Dono / Origem">
-        <Select value={form.origem} onChange={(e) => set("origem", e.target.value as Origem)}>
-          {(donos ?? []).map((o) => (
-            <option key={o.id} value={o.nome}>
-              {o.nome}
-            </option>
-          ))}
-        </Select>
+        <UiSelect value={form.origem} onValueChange={(v) => set("origem", v as Origem)}>
+          <SelectTrigger className="h-[38px] w-full bg-[var(--bg-2)] shadow-none">
+            <SelectValue placeholder="Selecione" />
+          </SelectTrigger>
+          <SelectContent>
+            {(donos ?? []).map((o) => (
+              <SelectItem key={o.id} value={o.nome}>
+                {o.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </UiSelect>
       </Field>
       <Field label="Repositório GitHub">
         <TextInput value={form.github_url} onChange={(e) => set("github_url", e.target.value)} placeholder="https://github.com/…" />
@@ -570,13 +582,18 @@ function ProjetoDrawer({ projeto, startEdit, onClose }: { projeto: Projeto; star
             <TextInput value={form.nome} autoFocus onChange={(e) => set("nome", e.target.value)} placeholder="Nome do projeto" />
           </Field>
           <Field label="Dono / Origem">
-            <Select value={form.origem} onChange={(e) => set("origem", e.target.value as Origem)}>
-              {(donos ?? []).map((o) => (
-                <option key={o.id} value={o.nome}>
-                  {o.nome}
-                </option>
-              ))}
-            </Select>
+            <UiSelect value={form.origem} onValueChange={(v) => set("origem", v as Origem)}>
+              <SelectTrigger className="h-[38px] w-full bg-[var(--bg-2)] shadow-none">
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                {(donos ?? []).map((o) => (
+                  <SelectItem key={o.id} value={o.nome}>
+                    {o.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </UiSelect>
           </Field>
           <Field label="Repositório GitHub">
             <TextInput value={form.github_url} onChange={(e) => set("github_url", e.target.value)} placeholder="https://github.com/…" />
