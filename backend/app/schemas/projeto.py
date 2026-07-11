@@ -83,6 +83,7 @@ class ProjetoUpdate(BaseModel):
     publicavel: bool | None = None
     arquivado: bool | None = None
     rascunho: bool | None = None
+    brief: str | None = None
 
     _check_github = field_validator("github_url")(_validate_url)
     _check_site = field_validator("site_url")(_validate_url)
@@ -135,9 +136,30 @@ class ProjetoResponse(BaseModel):
     publicavel: bool
     arquivado: bool
     rascunho: bool = False
+    brief: str | None = None
     criado_em: datetime
     membros: list[MembroResponse] = []
     vps: VpsResponse | None = None
     tem_credencial: bool = False
 
     model_config = {"from_attributes": True}
+
+
+# ---- Ideia: brief + chat de co-escrita com IA ----
+
+
+class BriefUpdate(BaseModel):
+    brief: str = ""
+
+
+class IdeiaChatMsg(BaseModel):
+    id: uuid.UUID
+    role: str
+    content: str
+    criado_em: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class IdeiaChatRequest(BaseModel):
+    mensagem: str

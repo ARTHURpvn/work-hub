@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { projetosApi, type Origem, type Projeto } from "@/api/projetos"
 import { Icon } from "@/components/ui/Icon"
 import { Drawer } from "@/components/ui/Drawer"
@@ -19,6 +20,7 @@ import { useCreateVps, useVpsList } from "@/hooks/useVps"
 import { toast } from "@/store/toastStore"
 
 export function Projetos() {
+  const navigate = useNavigate()
   const { data: projetos } = useProjetos()
   const { data: donos } = useDonos()
 
@@ -118,6 +120,10 @@ export function Projetos() {
                   key={p.id}
                   p={p}
                   onOpen={() => {
+                    if (p.rascunho) {
+                      navigate(`/ideias/${p.id}`)
+                      return
+                    }
                     setOpenId(p.id)
                     setEditNew(false)
                   }}
@@ -157,8 +163,12 @@ export function Projetos() {
           onClose={() => setCreating(null)}
           onCreated={(id, rascunho) => {
             setCreating(null)
-            // mostra a lista onde o item recém-criado aparece: Ideias se rascunho, senão ativos
-            setShowIdeias(rascunho)
+            // ideia abre direto na página dedicada (brief + IA); projeto normal abre no drawer
+            if (rascunho) {
+              navigate(`/ideias/${id}`)
+              return
+            }
+            setShowIdeias(false)
             setOpenId(id)
             setEditNew(false)
           }}

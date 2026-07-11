@@ -8,6 +8,7 @@ import { Dashboard } from "@/pages/Dashboard"
 import { Donos } from "@/pages/Donos"
 import { Ferramentas } from "@/pages/Ferramentas"
 import { Hooks } from "@/pages/Hooks"
+import { IdeiaDetail } from "@/pages/IdeiaDetail"
 import { Login } from "@/pages/Login"
 import { McpServers } from "@/pages/McpServers"
 import { McpStore } from "@/pages/McpStore"
@@ -32,6 +33,7 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="projetos" element={<Projetos />} />
+        <Route path="ideias/:id" element={<IdeiaDetail />} />
         <Route path="vps" element={<Vps />} />
         <Route path="donos" element={<Donos />} />
         <Route path="ferramentas" element={<Ferramentas />} />

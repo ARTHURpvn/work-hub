@@ -4,6 +4,7 @@ from app.models.configuracao import Configuracao
 from app.models.credencial import CredencialProjeto
 from app.models.dono import Dono
 from app.models.ferramenta import Ferramenta
+from app.models.ideia_chat import IdeiaChat
 from app.models.linkedin import LinkedinPost, PromptTemplate
 from app.models.projeto import Projeto, ProjetoMembro
 from app.models.rotina import Rotina, UsoIA
@@ -42,6 +43,7 @@ __all__ = [
     "SkillRemota",
     "SkillArquivo",
     "SkillChat",
+    "IdeiaChat",
     "Plugin",
     "PluginSkill",
     "Subagent",

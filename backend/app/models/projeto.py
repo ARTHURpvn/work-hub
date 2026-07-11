@@ -26,6 +26,7 @@ class Projeto(Base):
     publicavel: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     arquivado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     rascunho: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    brief: Mapped[str | None] = mapped_column(Text, nullable=True)  # doc "o que o projeto precisa ter"
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )
