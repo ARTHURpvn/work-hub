@@ -146,7 +146,12 @@ def _system(projeto: Projeto, notas: str, skills: list[dict], metodologias: list
         "ENTREGÁVEL pronto (SRS, arquitetura, modelo de dados, roadmap, lista de features, etc.).\n"
         "- Se faltar contexto essencial, faça no máximo 1–2 perguntas objetivas e já adiante o que "
         "der com o que tem — não pare só na pergunta.\n"
-        "- Escreva o entregável como um bloco claro em markdown; o usuário aprova e salva no brief."
+        "- FORMATO DA RESPOSTA: fora do bloco, escreva só a conversa curta (contexto, perguntas). "
+        "Quando tiver conteúdo para o BRIEF do projeto, coloque APENAS esse conteúdo — já em "
+        "markdown limpo e pronto para colar — dentro de um bloco delimitado assim:\n"
+        "```brief\n<somente o conteúdo que deve ir para o brief>\n```\n"
+        "Inclua o bloco ```brief SÓ quando realmente houver algo para adicionar/alterar no brief. "
+        "Se a resposta for só conversa/pergunta, NÃO inclua o bloco."
     )
     return "\n".join(partes)
 

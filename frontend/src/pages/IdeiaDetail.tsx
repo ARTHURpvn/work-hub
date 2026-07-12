@@ -1,11 +1,22 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { ideiaApi, type IdeiaChatMsg, type IdeiaStatus, type Projeto } from "@/api/projetos"
 import { Icon } from "@/components/ui/Icon"
 import { Button, Empty, IconButton, OriginTag } from "@/components/ui/kit"
 import { useProjeto, useUpdateProjeto } from "@/hooks/useProjetos"
 import { toast } from "@/store/toastStore"
+
+/** Extrai o bloco ```brief da resposta da IA: {texto conversacional, proposta p/ o brief}. */
+function parseBrief(content: string): { texto: string; proposta: string | null } {
+  const m = content.match(/```brief\s*\n?([\s\S]*?)```/i)
+  if (!m) return { texto: content.trim(), proposta: null }
+  const proposta = m[1].trim()
+  const texto = content.replace(m[0], "").trim()
+  return { texto, proposta: proposta || null }
+}
 
 export function IdeiaDetail() {
   const { id } = useParams<{ id: string }>()
@@ -17,7 +28,9 @@ export function IdeiaDetail() {
   const [brief, setBrief] = useState("")
   const [briefDirty, setBriefDirty] = useState(false)
   const [savingBrief, setSavingBrief] = useState(false)
+  const [briefView, setBriefView] = useState<"editar" | "visualizar">("editar")
   const briefInit = useRef(false)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
 
   const { data: chatInicial } = useQuery({
     queryKey: ["ideia", "chat", id],
@@ -44,6 +57,14 @@ export function IdeiaDetail() {
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight })
   }, [msgs, status, enviando])
+
+  // composer cresce com o conteúdo (até o max-height do CSS)
+  useEffect(() => {
+    const el = composerRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
+  }, [draft])
 
   if (isLoading) {
     return (
@@ -181,20 +202,46 @@ export function IdeiaDetail() {
             <span className="grow" style={{ fontWeight: 700 }}>
               Brief — o que o projeto precisa ter
             </span>
+            <div className="seg">
+              <button className={briefView === "editar" ? "on" : ""} onClick={() => setBriefView("editar")} type="button">
+                <Icon name="edit" size={12} /> Editar
+              </button>
+              <button
+                className={briefView === "visualizar" ? "on" : ""}
+                onClick={() => setBriefView("visualizar")}
+                type="button"
+              >
+                <Icon name="eye" size={12} /> Visualizar
+              </button>
+            </div>
             <Button size="sm" variant="primary" icon="check" onClick={salvarBrief} disabled={!briefDirty || savingBrief}>
               {savingBrief ? "Salvando…" : "Salvar"}
             </Button>
           </div>
-          <div className="skill-editor-area">
-            <textarea
-              value={brief}
-              onChange={(e) => {
-                setBrief(e.target.value)
-                setBriefDirty(true)
-              }}
-              placeholder="Escreva aqui o que o projeto precisa ter — objetivo, funcionalidades, escopo, stack, riscos. Ou peça pra IA ao lado e clique em 'Inserir no brief'."
-            />
-          </div>
+          {briefView === "editar" ? (
+            <div className="skill-editor-area">
+              <textarea
+                value={brief}
+                onChange={(e) => {
+                  setBrief(e.target.value)
+                  setBriefDirty(true)
+                }}
+                placeholder="Escreva aqui o que o projeto precisa ter — objetivo, funcionalidades, escopo, stack, riscos. Ou peça pra IA ao lado e aprove uma proposta."
+              />
+            </div>
+          ) : (
+            <div className="brief-preview">
+              {brief.trim() ? (
+                <div className="md">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{brief}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="muted" style={{ margin: 0 }}>
+                  Brief vazio — escreva na aba Editar ou aprove uma proposta da IA.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Assistente */}
@@ -222,24 +269,49 @@ export function IdeiaDetail() {
                 </div>
               )}
 
-              {msgs.map((m) => (
-                <div key={m.id} className={"cmsg " + (m.role === "assistant" ? "ai" : "me")}>
-                  <div className="cav">{m.role === "assistant" ? "IA" : "eu"}</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-                    <div className="cbubble">{m.content}</div>
-                    {m.role === "assistant" && (
-                      <button
-                        className="csug"
-                        type="button"
-                        disabled={savingBrief}
-                        onClick={() => aprovarNoBrief(m.content)}
-                      >
-                        <Icon name="check" size={12} /> Aprovar e salvar no brief
-                      </button>
-                    )}
+              {msgs.map((m) => {
+                const ai = m.role === "assistant"
+                const { texto, proposta } = ai
+                  ? parseBrief(m.content)
+                  : { texto: m.content, proposta: null }
+                return (
+                  <div key={m.id} className={"cmsg " + (ai ? "ai" : "me")}>
+                    <div className="cav">{ai ? "IA" : "eu"}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+                      {texto && (
+                        <div className="cbubble">
+                          {ai ? (
+                            <div className="md">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{texto}</ReactMarkdown>
+                            </div>
+                          ) : (
+                            texto
+                          )}
+                        </div>
+                      )}
+                      {proposta && (
+                        <div className="brief-proposta">
+                          <div className="brief-proposta-head">
+                            <Icon name="edit" size={12} /> Proposta para o brief
+                          </div>
+                          <div className="brief-proposta-body md">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{proposta}</ReactMarkdown>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            icon="check"
+                            disabled={savingBrief}
+                            onClick={() => aprovarNoBrief(proposta)}
+                          >
+                            Aprovar e salvar no brief
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
 
               {enviando && (
                 <div className="cmsg ai">
@@ -268,6 +340,7 @@ export function IdeiaDetail() {
 
             <div className="composer">
               <textarea
+                ref={composerRef}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {

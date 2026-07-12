@@ -483,8 +483,39 @@ body.dark .overlay { background: rgba(0,0,0,0.6); }
 .csug { font-size: 12.5px; font-weight: 600; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); background: var(--accent-weak); border-radius: 100px; padding: 5px 12px; cursor: pointer; }
 .csug:hover { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
 .composer { display: flex; align-items: flex-end; gap: 9px; padding: 12px 18px; border-top: 1px solid var(--border); }
-.composer textarea { flex: 1; resize: none; font-family: var(--ui); font-size: 14px; color: var(--text); background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--r-lg); padding: 10px 13px; outline: none; max-height: 120px; line-height: 1.45; }
+.composer textarea { flex: 1; resize: none; font-family: var(--ui); font-size: 14px; color: var(--text); background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--r-lg); padding: 10px 13px; outline: none; min-height: 40px; max-height: 200px; overflow-y: auto; line-height: 1.45; }
 .composer textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+
+/* proposta de conteúdo para o brief (dentro da mensagem da IA) */
+.brief-proposta { border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); background: var(--accent-weak); border-radius: var(--r-md); padding: 10px 12px; display: flex; flex-direction: column; gap: 9px; }
+.brief-proposta-head { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); display: flex; align-items: center; gap: 5px; }
+.brief-proposta-body { font-size: 13px; line-height: 1.5; color: var(--text); max-height: 260px; overflow: auto; }
+
+/* toggle Editar/Visualizar do brief */
+.seg { display: inline-flex; border: 1px solid var(--border-2); border-radius: 8px; overflow: hidden; background: var(--bg-2); }
+.seg button { font-family: var(--ui); font-size: 12.5px; font-weight: 600; color: var(--text-2); background: transparent; border: none; padding: 5px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.seg button.on { background: var(--accent); color: var(--accent-text); }
+.seg button:not(.on):hover { background: var(--surface-2); color: var(--text); }
+
+/* markdown renderizado (preview do brief e proposta) */
+.md { font-size: 13.5px; line-height: 1.6; color: var(--text); word-break: break-word; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md h1, .md h2, .md h3, .md h4 { font-weight: 700; line-height: 1.25; margin: 16px 0 8px; }
+.md h1 { font-size: 20px; } .md h2 { font-size: 17px; } .md h3 { font-size: 15px; } .md h4 { font-size: 13.5px; }
+.md p { margin: 8px 0; }
+.md ul, .md ol { margin: 8px 0; padding-left: 22px; }
+.md li { margin: 3px 0; }
+.md code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.88em; background: var(--surface-3); padding: 1px 5px; border-radius: 5px; }
+.md pre { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px; overflow-x: auto; margin: 10px 0; }
+.md pre code { background: none; padding: 0; font-size: 12px; line-height: 1.5; }
+.md a { color: var(--accent); }
+.md blockquote { border-left: 3px solid var(--border-2); margin: 10px 0; padding-left: 12px; color: var(--text-2); }
+.md table { border-collapse: collapse; margin: 10px 0; width: 100%; font-size: 12.5px; }
+.md th, .md td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
+.md th { background: var(--surface-2); font-weight: 700; }
+.md hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.brief-preview { flex: 1; min-height: 0; padding: 14px 18px; overflow-y: auto; }
 .csend { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); color: var(--accent-text); border: none; display: grid; place-items: center; cursor: pointer; flex-shrink: 0; }
 .csend:hover { background: var(--accent-press); }
 .csend:disabled { opacity: 0.4; cursor: not-allowed; }
