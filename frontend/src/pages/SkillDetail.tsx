@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { skillsApi, type SkillArquivo, type SkillChatMsg } from "@/api/skills"
 import { Icon } from "@/components/ui/Icon"
 import { Button, IconButton } from "@/components/ui/kit"
@@ -37,7 +39,9 @@ export function SkillDetail() {
   const [dirty, setDirty] = useState(false)
   const [draft, setDraft] = useState("")
   const [pendingUser, setPendingUser] = useState<string | null>(null)
+  const [view, setView] = useState<"editar" | "visualizar">("editar")
   const threadRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (skill) {
@@ -51,6 +55,14 @@ export function SkillDetail() {
   useEffect(() => {
     if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight
   }, [historico, chat.isPending, pendingUser])
+
+  // composer cresce com o conteúdo (até o max-height do CSS)
+  useEffect(() => {
+    const el = composerRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
+  }, [draft])
 
   if (isLoading) {
     return (
@@ -293,6 +305,7 @@ export function SkillDetail() {
 
             <div className="composer">
               <textarea
+                ref={composerRef}
                 value={draft}
                 rows={1}
                 placeholder="Peça mudanças, tire dúvidas…"
@@ -318,6 +331,18 @@ export function SkillDetail() {
               Arquivos do bundle
             </span>
             {dirty ? <span className="t-meta">não salvo</span> : null}
+            <div className="seg">
+              <button className={view === "editar" ? "on" : ""} onClick={() => setView("editar")} type="button">
+                <Icon name="edit" size={12} /> Editar
+              </button>
+              <button
+                className={view === "visualizar" ? "on" : ""}
+                onClick={() => setView("visualizar")}
+                type="button"
+              >
+                <Icon name="eye" size={12} /> Visualizar
+              </button>
+            </div>
           </div>
 
           {/* abas de arquivos */}
@@ -357,14 +382,28 @@ export function SkillDetail() {
             </div>
           )}
 
-          <div className="skill-editor-area">
-            <textarea
-              value={valorAtivo}
-              spellCheck={false}
-              placeholder={ativo === SKILL_MD ? "" : "Conteúdo de " + ativo}
-              onChange={(e) => editarAtivo(e.target.value)}
-            />
-          </div>
+          {view === "editar" ? (
+            <div className="skill-editor-area">
+              <textarea
+                value={valorAtivo}
+                spellCheck={false}
+                placeholder={ativo === SKILL_MD ? "" : "Conteúdo de " + ativo}
+                onChange={(e) => editarAtivo(e.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="brief-preview">
+              {valorAtivo.trim() ? (
+                <div className="md">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{valorAtivo}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="muted" style={{ margin: 0 }}>
+                  Arquivo vazio.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -400,7 +439,9 @@ function ChatBubble({
         <Icon name="sparkle" size={14} />
       </div>
       <div className="cbubble">
-        {m.content}
+        <div className="md">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+        </div>
 
         {m.demonstracao && (
           <div className="demo-box">
