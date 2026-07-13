@@ -1,6 +1,6 @@
 services:
   proxy:
-    image: caddy:2-alpine
+    image: docker.io/library/caddy:2-alpine
     restart: unless-stopped
     ports:
       - "80:80"
@@ -69,7 +69,7 @@ services:
       - internal
 
   db:
-    image: postgres:16-alpine
+    image: docker.io/library/postgres:16-alpine
     restart: unless-stopped
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-workhub}
