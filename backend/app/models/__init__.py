@@ -1,5 +1,4 @@
 from app.models.agente import Agente, Job, JobLog
-from app.models.calendario import IntegracaoCalendario, SyncLog
 from app.models.configuracao import Configuracao
 from app.models.credencial import CredencialProjeto
 from app.models.dono import Dono
@@ -55,8 +54,6 @@ __all__ = [
     "PluginHook",
     "Command",
     "PluginCommand",
-    "IntegracaoCalendario",
-    "SyncLog",
     "PromptTemplate",
     "LinkedinPost",
 ]
