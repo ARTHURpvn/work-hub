@@ -6,7 +6,7 @@ from slowapi.util import get_remote_address
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
-from app.routers import auth, calendario, commands, config, dashboard, donos, ferramentas, hooks, mcp_servers, mcp_store, plugins, projetos, rotinas, skills, subagents, tarefas, uso, vps
+from app.routers import auth, commands, config, dashboard, donos, ferramentas, hooks, mcp_servers, mcp_store, plugins, projetos, rotinas, skills, subagents, tarefas, uso, vps
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -40,7 +40,6 @@ app.include_router(vps.router, prefix="/api/v1/vps", tags=["vps"])
 app.include_router(donos.router, prefix="/api/v1/donos", tags=["donos"])
 app.include_router(ferramentas.router, prefix="/api/v1/ferramentas", tags=["ferramentas"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["dashboard"])
-app.include_router(calendario.router, prefix="/api/v1/calendario", tags=["calendario"])
 app.include_router(skills.router, prefix="/api/v1/skills", tags=["skills"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 app.include_router(subagents.router, prefix="/api/v1/subagents", tags=["subagents"])

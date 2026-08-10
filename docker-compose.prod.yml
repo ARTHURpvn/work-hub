@@ -1,0 +1,120 @@
+# =============================================================================
+# Stack de PRODUÇÃO (VPS com Dokploy).
+#
+# A VPS NUNCA compila. Ela tem 4 GB e roda cinco projetos; instalar as
+# dependências desta imagem (apt + Node + a CLI da Claude) pica em GB e, sem
+# folga, o OOM Killer mata processo de OUTRO projeto. Por isso: `image:`, nunca
+# `build:`. Quem constrói é o GitHub Actions (.github/workflows/deploy.yml),
+# que publica no GHCR; aqui só se faz `pull`.
+#
+# ⚠️ Este arquivo é AUTOCONTIDO — não é mais um override do docker-compose.yml.
+#    O Dokploy sobe UM arquivo só. Para desenvolver, continue usando o
+#    docker-compose.yml, que tem `build:` e os bind mounts da máquina local.
+#
+# O CADDY SAIU. Ele existia para dividir `/api` do resto; agora isso é feito
+# pelo Traefik do Dokploy, com dois domínios apontando para o mesmo host:
+#
+#     dash.arthurpvn.tech  /      → frontend:80
+#     dash.arthurpvn.tech  /api   → backend:8000     (sem stripPath!)
+#
+# O backend espera receber o prefixo `/api` — as rotas dele são `/api/v1/...`.
+# Ligar o stripPath do Dokploy faria tudo virar 404.
+#
+# Rollback: troque TAG para o sha de um deploy anterior e suba de novo. Nunca
+# use `latest` como referência de rollback — ela é mutável e não reproduz
+# estado nenhum.
+#
+#     TAG=a3f9c21... docker compose -f docker-compose.prod.yml up -d
+# =============================================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    networks: [interna]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-workhub}
+      POSTGRES_USER: ${POSTGRES_USER:-workhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no Environment do Dokploy}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-workhub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: {memory: 320M}
+        reservations: {memory: 128M}
+
+  backend:
+    image: ghcr.io/arthurpvn/work-hub-backend:${TAG:-latest}
+    restart: unless-stopped
+    # `dokploy-network` porque o Traefik roteia `/api` direto para cá; `interna`
+    # é como se chega no banco. Sem porta publicada: quem fala com a internet é
+    # o Traefik.
+    networks: [interna, dokploy-network]
+    # O app lê a configuração de /app/.env. O arquivo é escrito pelo Dokploy a
+    # partir do Environment do painel, ao lado deste compose — é o mesmo
+    # caminho que o fluxo antigo usava, então o comportamento não muda.
+    volumes:
+      - ./.env:/app/.env:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    deploy:
+      resources:
+        limits: {memory: 512M}
+        reservations: {memory: 192M}
+
+  worker:
+    image: ghcr.io/arthurpvn/work-hub-worker:${TAG:-latest}
+    restart: unless-stopped
+    networks: [interna]
+    env_file:
+      - path: ./.env
+        required: true
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits: {memory: 256M}
+        reservations: {memory: 96M}
+
+  frontend:
+    image: ghcr.io/arthurpvn/work-hub-frontend:${TAG:-latest}
+    restart: unless-stopped
+    networks: [interna, dokploy-network]
+    deploy:
+      resources:
+        limits: {memory: 64M}
+        reservations: {memory: 32M}
+
+networks:
+  # Rede privada do stack: o banco só se enxerga aqui.
+  interna:
+  # Criada pelo instalador do Dokploy. `external` porque ela é do Traefik, não
+  # deste arquivo — declarar sem isso faria o Compose criar uma rede homônima
+  # prefixada pelo projeto, e o Traefik nunca alcançaria estes containers.
+  dokploy-network:
+    external: true
+
+volumes:
+  # EXTERNO e com o nome EXATO do que já existe na VPS. Volume gerenciado pelo
+  # compose recebe o nome do projeto como prefixo — se o Dokploy deployar com
+  # outro nome de projeto, o Postgres subiria com volume novo e VAZIO, e o
+  # sintoma seria "o sistema perdeu tudo", sem erro nenhum no log.
+  #
+  # Para recriar do zero num servidor novo:
+  #   docker volume create work-hub_postgres_data
+  postgres_data:
+    external: true
+    name: work-hub_postgres_data
