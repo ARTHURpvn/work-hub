@@ -1,0 +1,74 @@
+# =============================================================================
+# Build das imagens e publicação no GHCR.
+#
+# A VPS NUNCA compila. Ela tem 4 GB e roda cinco projetos; um build de Vite ou
+# a instalação de dependências Python + Node desta imagem pica em GB e aciona o
+# OOM Killer, derrubando processo de OUTRO projeto — não o build. Todo o build
+# acontece aqui, e a VPS só faz `pull` de imagem pronta.
+#
+# São TRÊS imagens porque são três runtimes: backend (FastAPI + a CLI da Claude),
+# worker (Python puro) e frontend (estático servido por nginx).
+# =============================================================================
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+# Dois pushes seguidos não podem virar dois deploys concorrentes: o segundo
+# cancela o primeiro em vez de disputar o mesmo serviço.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # O GHCR exige o path da imagem em MINÚSCULAS, e `github.repository` preserva
+  # a capitalização do dono ("ARTHURpvn/..."). Sem forçar o caixa-baixo, o push
+  # falha com "invalid reference format" — erro que não menciona maiúsculas.
+  IMAGEM_BASE: ghcr.io/arthurpvn/work-hub
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      # `fail-fast: false` de propósito: se o frontend quebrar, ainda quero
+      # saber se o backend estava bom. Com o padrão, os outros são cancelados
+      # e o log some.
+      fail-fast: false
+      matrix:
+        include:
+          - nome: backend
+            contexto: ./backend
+          - nome: frontend
+            contexto: ./frontend
+          - nome: worker
+            contexto: ./worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: build e push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.contexto }}
+          push: true
+          # DUAS tags sempre. `:latest` é o que o compose referencia no dia a
+          # dia; `:<sha>` é o rollback — e precisa ser o sha, porque `latest` é
+          # mutável e não reproduz estado nenhum.
+          tags: |
+            ${{ env.IMAGEM_BASE }}-${{ matrix.nome }}:latest
+            ${{ env.IMAGEM_BASE }}-${{ matrix.nome }}:${{ github.sha }}
+          # Sem cache de camadas, cada build reinstala tudo — no backend isso
+          # inclui apt, Node e a CLI da Claude.
+          cache-from: type=gha,scope=${{ matrix.nome }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.nome }}
