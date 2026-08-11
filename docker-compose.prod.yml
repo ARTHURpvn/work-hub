@@ -50,6 +50,16 @@ services:
 
   backend:
     image: ghcr.io/arthurpvn/work-hub-backend:${TAG:-latest}
+    # `always` NÃO é zelo: sem isto, um deploy que muda só CÓDIGO é um no-op
+    # SILENCIOSO. O Dokploy roda `docker compose up -d` sem `pull`, e como
+    # `:latest` é referência MUTÁVEL, o Compose vê o mesmo nome de imagem,
+    # conclui que nada mudou e não recria nada. O deploy fica verde de ponta a
+    # ponta — CI, GHCR, painel — e a produção segue no código velho.
+    #
+    # Aconteceu no echoesLab e no bot em 2026-08-11: dois PRs mergeados, imagens
+    # publicadas, repositório na VPS no commit certo, e o código antigo rodando.
+    # Só apareceu ao olhar DENTRO do container.
+    pull_policy: always
     restart: unless-stopped
     # `dokploy-network` porque o Traefik roteia `/api` direto para cá; `interna`
     # é como se chega no banco. Sem porta publicada: quem fala com a internet é
@@ -76,6 +86,8 @@ services:
 
   worker:
     image: ghcr.io/arthurpvn/work-hub-worker:${TAG:-latest}
+    # Ver a nota no `backend`: sem isto, deploy de código puro é no-op.
+    pull_policy: always
     restart: unless-stopped
     networks: [interna]
     env_file:
@@ -91,6 +103,8 @@ services:
 
   frontend:
     image: ghcr.io/arthurpvn/work-hub-frontend:${TAG:-latest}
+    # Ver a nota no `backend`: sem isto, deploy de código puro é no-op.
+    pull_policy: always
     restart: unless-stopped
     networks: [interna, dokploy-network]
     deploy:
